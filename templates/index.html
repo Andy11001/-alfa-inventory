@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feed Scraper Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+    <style>
+        body { background-color: #f8f9fa; }
+        .console-output {
+            background-color: #1e1e1e;
+            color: #00ff00;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 15px;
+            border-radius: 5px;
+            height: 300px;
+            overflow-y: scroll;
+            white-space: pre-wrap;
+            font-size: 0.9rem;
+        }
+        .card { box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: none; }
+        .btn-run { width: 100%; }
+        .status-badge { font-size: 0.8em; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark mb-4">
+        <div class="container">
+            <span class="navbar-brand mb-0 h1">🚗 Feed Scraper Dashboard</span>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Control Panel -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Alfa Romeo Feed</h5>
+                        <p class="text-muted small">Scraper ofert Alfa Romeo (Requests/BS4)</p>
+                        <button onclick="runScript('alfa')" class="btn btn-danger btn-run" id="btn-alfa">
+                            Uruchom Scraper
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">DS Automobiles Feed</h5>
+                        <p class="text-muted small">Scraper ofert DS (Selenium)</p>
+                        <button onclick="runScript('ds')" class="btn btn-dark btn-run" id="btn-ds">
+                            Uruchom Scraper
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Walidator</h5>
+                        <p class="text-muted small">Sprawdza poprawność plików CSV</p>
+                        <button onclick="runScript('validate')" class="btn btn-success btn-run" id="btn-validate">
+                            Uruchom Walidację
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Console Output -->
+        <div class="card mb-4">
+            <div class="card-header bg-secondary text-white">
+                Logi Systemowe
+            </div>
+            <div class="card-body p-0">
+                <div class="console-output" id="console">Gotowy do pracy...</div>
+            </div>
+        </div>
+
+        <!-- Data Preview -->
+        <div class="card">
+            <div class="card-header">
+                <ul class="nav nav-tabs card-header-tabs" id="dataTabs" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active" id="alfa-tab" data-bs-toggle="tab" data-bs-target="#alfa-pane" type="button">Alfa Romeo CSV</button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" id="ds-tab" data-bs-toggle="tab" data-bs-target="#ds-pane" type="button">DS Feed CSV</button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                <div class="tab-content">
+                    <div class="tab-pane fade show active" id="alfa-pane">
+                        <div id="alfa-table-container">Ładowanie danych...</div>
+                    </div>
+                    <div class="tab-pane fade" id="ds-pane">
+                        <div id="ds-table-container">Ładowanie danych...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        function runScript(scriptType) {
+            const btn = document.getElementById(`btn-${scriptType}`);
+            const consoleDiv = document.getElementById('console');
+            
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Przetwarzanie...';
+            consoleDiv.textContent = `>>> Uruchamianie zadania: ${scriptType}...
+`;
+
+            fetch(`/run/${scriptType}`, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    consoleDiv.textContent += data.output;
+                    if(data.error) {
+                        consoleDiv.textContent += `
+❌ BŁĄD: ${data.error}`;
+                    } else {
+                        consoleDiv.textContent += `
+✅ Zakończono sukcesem.`;
+                        refreshTables();
+                    }
+                })
+                .catch(err => {
+                    consoleDiv.textContent += `
+❌ Błąd komunikacji: ${err}`;
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.textContent = btn.getAttribute('onclick').includes('alfa') ? 'Uruchom Scraper' : 
+                                      btn.getAttribute('onclick').includes('ds') ? 'Uruchom Scraper' : 'Uruchom Walidację';
+                });
+        }
+
+        function loadTable(type) {
+            fetch(`/data/${type}`)
+                .then(r => r.text())
+                .then(html => {
+                    document.getElementById(`${type}-table-container`).innerHTML = html;
+                });
+        }
+
+        function refreshTables() {
+            loadTable('alfa');
+            loadTable('ds');
+        }
+
+        // Initial Load
+        refreshTables();
+    </script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+*.log
+nul
+check_*.py
+debug_landing.png
+.DS_Store
+.vscode/
