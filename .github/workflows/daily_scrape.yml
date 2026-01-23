@@ -1,9 +1,9 @@
-name: Daily Alfa Romeo Feed Update
+name: Daily Alfa Romeo Feed Update to Gist
 
 on:
   schedule:
-    - cron: '0 2 * * *'  # Runs every day at 2:00 AM UTC (3:00 AM Polish time)
-  workflow_dispatch:     # Allows you to run it manually with one click on GitHub
+    - cron: '0 2 * * *'  # 3:00 rano czasu polskiego
+  workflow_dispatch:     # Pozwala uruchomić ręcznie
 
 jobs:
   build:
@@ -18,16 +18,14 @@ jobs:
           python-version: '3.10'
 
       - name: Install dependencies
-        run: |
-          pip install requests
+        run: pip install requests
 
       - name: Run Scraper
         run: python alfa_romeo_inventory_scraper.py
 
-      - name: Commit and Push changes
-        run: |
-          git config --global user.name "GitHub Action"
-          git config --global user.email "action@github.com"
-          git add alfa_romeo_inventory.csv
-          git commit -m "Automatyczna aktualizacja feedu: $(date)" || exit 0
-          git push
+      - name: Update Gist
+        uses: exuanbo/gist-actions@v2
+        with:
+          gist_id: 4d86df02798a5e87c6cdb7b358904717
+          gist_token: ${{ secrets.GIST_TOKEN }}
+          file_path: alfa_romeo_inventory.csv
