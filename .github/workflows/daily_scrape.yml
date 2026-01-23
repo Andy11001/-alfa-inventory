@@ -1,4 +1,4 @@
-name: Daily Alfa Romeo Feed Update to Gist
+name: Daily Inventory Feed Update (Alfa & DS)
 
 on:
   schedule:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:     # Pozwala uruchomić ręcznie
 
 jobs:
-  build:
+  update-feeds:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -18,14 +18,26 @@ jobs:
           python-version: '3.10'
 
       - name: Install dependencies
-        run: pip install requests
+        run: pip install requests beautifulsoup4
 
-      - name: Run Scraper
+      # --- ALFA ROMEO TASK ---
+      - name: Run Alfa Romeo Scraper
         run: python alfa_romeo_inventory_scraper.py
 
-      - name: Update Gist
+      - name: Update Alfa Gist
         uses: exuanbo/actions-deploy-gist@v1
         with:
           token: ${{ secrets.GIST_TOKEN }}
           gist_id: 4d86df02798a5e87c6cdb7b358904717
           file_path: alfa_romeo_inventory.csv
+
+      # --- DS AUTOMOBILES TASK ---
+      - name: Run DS Scraper
+        run: python ds_inventory_scraper.py
+
+      - name: Update DS Gist
+        uses: exuanbo/actions-deploy-gist@v1
+        with:
+          token: ${{ secrets.GIST_TOKEN }}
+          gist_id: c0685fee7a36d746f530d28c18b05ae6
+          file_path: ds_inventory.csv
