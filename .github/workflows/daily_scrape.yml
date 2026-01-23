@@ -24,8 +24,8 @@ jobs:
         run: python alfa_romeo_inventory_scraper.py
 
       - name: Update Gist
-        uses: exuanbo/gist-actions@v2
+        uses: exuanbo/actions-deploy-gist@v1
         with:
+          token: ${{ secrets.GIST_TOKEN }}
           gist_id: 4d86df02798a5e87c6cdb7b358904717
-          gist_token: ${{ secrets.GIST_TOKEN }}
           file_path: alfa_romeo_inventory.csv
