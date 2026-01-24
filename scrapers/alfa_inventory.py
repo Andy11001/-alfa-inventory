@@ -154,7 +154,7 @@ def main():
             "state_of_vehicle": "New" if (offer.get("mileage") or 0) < 100 else "Used",
             "price": f"{price_brutto} PLN",
             "currency": "PLN",
-            "address": f"{street}, {city}, Polska",
+            "address": f"{street.upper()}, {city.upper()}, Polska",
             "latitude": lat,
             "longitude": lon,
             "offer_type": "LEASE",

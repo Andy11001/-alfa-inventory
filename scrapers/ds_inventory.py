@@ -84,7 +84,8 @@ def parse_detail_page(url, session):
         lon = dealer_data["lon"]
         street = dealer_data.get("street", "Al. Krakowska 206")
 
-        address_text = f"DS Store {detected_city}, {street}, {detected_city}, Polska"
+        # Ujednolicenie formatu do Alfy (STREET, CITY, Polska)
+        address_text = f"{street.upper()}, {detected_city.upper()}, Polska"
 
         year_match = re.search(r'Rok produkcji\s*[:\-]?\s*(\d{4})', text_content, re.IGNORECASE)
         if year_match:
@@ -94,7 +95,7 @@ def parse_detail_page(url, session):
         
     except Exception as e:
         print(f"Błąd parsowania {url}: {e}")
-        return "", "DS Store Warszawa, Al. Krakowska 206, Warszawa, Polska", "2024", "", ""
+        return "", "AL. KRAKOWSKA 206, WARSZAWA, Polska", "2024", "", ""
 
 def main():
     print("Pobieranie listy pojazdów z API sklepu DS...")
