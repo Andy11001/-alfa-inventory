@@ -32,37 +32,68 @@
     </nav>
 
     <div class="container">
-        <!-- Control Panel -->
+        <!-- Inventory Feeds -->
+        <h4 class="mb-3">Inventory Feeds (Konkretne pojazdy)</h4>
         <div class="row mb-4">
-            <div class="col-md-4">
+            <div class="col-md-6">
                 <div class="card h-100">
                     <div class="card-body">
-                        <h5 class="card-title">Alfa Romeo Feed</h5>
-                        <p class="text-muted small">Scraper ofert Alfa Romeo (Requests/BS4)</p>
-                        <button onclick="runScript('alfa')" class="btn btn-danger btn-run" id="btn-alfa">
-                            Uruchom Scraper
+                        <h5 class="card-title">Alfa Romeo Inventory</h5>
+                        <p class="text-muted small">Pobiera dostępne auta z salon.alfaromeo.pl</p>
+                        <button onclick="runScript('alfa_inventory')" class="btn btn-danger btn-run" id="btn-alfa_inventory">
+                            Uruchom Inventory
                         </button>
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-6">
                 <div class="card h-100">
                     <div class="card-body">
-                        <h5 class="card-title">DS Automobiles Feed</h5>
-                        <p class="text-muted small">Scraper ofert DS (Selenium)</p>
-                        <button onclick="runScript('ds')" class="btn btn-dark btn-run" id="btn-ds">
-                            Uruchom Scraper
+                        <h5 class="card-title">DS Inventory</h5>
+                        <p class="text-muted small">Pobiera dostępne auta z sklep.dsautomobiles.pl</p>
+                        <button onclick="runScript('ds_inventory')" class="btn btn-dark btn-run" id="btn-ds_inventory">
+                            Uruchom Inventory
                         </button>
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
+        </div>
+
+        <!-- Model Feeds -->
+        <h4 class="mb-3">Model Feeds (Ogólne reklamy modeli)</h4>
+        <div class="row mb-4">
+            <div class="col-md-6">
                 <div class="card h-100">
                     <div class="card-body">
-                        <h5 class="card-title">Walidator</h5>
-                        <p class="text-muted small">Sprawdza poprawność plików CSV</p>
+                        <h5 class="card-title">Alfa Romeo Model</h5>
+                        <p class="text-muted small">Generuje reklamy dla konfiguracji (Model/Wersja/Kolor)</p>
+                        <button onclick="runScript('alfa_model')" class="btn btn-outline-danger btn-run" id="btn-alfa_model">
+                            Uruchom Model Feed
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">DS Model</h5>
+                        <p class="text-muted small">Generuje reklamy dla konfiguracji (Model/Wersja/Kolor)</p>
+                        <button onclick="runScript('ds_model')" class="btn btn-outline-dark btn-run" id="btn-ds_model">
+                            Uruchom Model Feed
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Utilities -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Narzędzia</h5>
                         <button onclick="runScript('validate')" class="btn btn-success btn-run" id="btn-validate">
-                            Uruchom Walidację
+                            Waliduj wszystkie pliki CSV
                         </button>
                     </div>
                 </div>
@@ -84,20 +115,27 @@
             <div class="card-header">
                 <ul class="nav nav-tabs card-header-tabs" id="dataTabs" role="tablist">
                     <li class="nav-item">
-                        <button class="nav-link active" id="alfa-tab" data-bs-toggle="tab" data-bs-target="#alfa-pane" type="button">Alfa Romeo CSV</button>
+                        <button class="nav-link active" id="alfa-inv-tab" data-bs-toggle="tab" data-bs-target="#alfa-inv-pane" type="button">Alfa Inventory</button>
                     </li>
                     <li class="nav-item">
-                        <button class="nav-link" id="ds-tab" data-bs-toggle="tab" data-bs-target="#ds-pane" type="button">DS Feed CSV</button>
+                        <button class="nav-link" id="ds-inv-tab" data-bs-toggle="tab" data-bs-target="#ds-inv-pane" type="button">DS Inventory</button>
+                    </li>
+                    <!-- Placeholders for Model tabs -->
+                    <li class="nav-item">
+                        <button class="nav-link disabled" id="alfa-mod-tab" type="button">Alfa Model (N/A)</button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link disabled" id="ds-mod-tab" type="button">DS Model (N/A)</button>
                     </li>
                 </ul>
             </div>
             <div class="card-body">
                 <div class="tab-content">
-                    <div class="tab-pane fade show active" id="alfa-pane">
-                        <div id="alfa-table-container">Ładowanie danych...</div>
+                    <div class="tab-pane fade show active" id="alfa-inv-pane">
+                        <div id="alfa_inventory-table-container">Ładowanie danych...</div>
                     </div>
-                    <div class="tab-pane fade" id="ds-pane">
-                        <div id="ds-table-container">Ładowanie danych...</div>
+                    <div class="tab-pane fade" id="ds-inv-pane">
+                        <div id="ds_inventory-table-container">Ładowanie danych...</div>
                     </div>
                 </div>
             </div>
@@ -111,6 +149,7 @@
         function runScript(scriptType) {
             const btn = document.getElementById(`btn-${scriptType}`);
             const consoleDiv = document.getElementById('console');
+            const originalText = btn.innerText;
             
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Przetwarzanie...';
@@ -136,22 +175,26 @@
                 })
                 .finally(() => {
                     btn.disabled = false;
-                    btn.textContent = btn.getAttribute('onclick').includes('alfa') ? 'Uruchom Scraper' : 
-                                      btn.getAttribute('onclick').includes('ds') ? 'Uruchom Scraper' : 'Uruchom Walidację';
+                    btn.innerText = originalText;
                 });
         }
 
         function loadTable(type) {
+            const container = document.getElementById(`${type}-table-container`);
+            if (!container) return; // Skip if tab doesn't exist yet
+
             fetch(`/data/${type}`)
                 .then(r => r.text())
                 .then(html => {
-                    document.getElementById(`${type}-table-container`).innerHTML = html;
+                    container.innerHTML = html;
                 });
         }
 
         function refreshTables() {
-            loadTable('alfa');
-            loadTable('ds');
+            loadTable('alfa_inventory');
+            loadTable('ds_inventory');
+            // loadTable('alfa_model'); // Uncomment when ready
+            // loadTable('ds_model');   // Uncomment when ready
         }
 
         // Initial Load

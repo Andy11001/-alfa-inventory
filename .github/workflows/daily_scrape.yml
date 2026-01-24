@@ -18,26 +18,29 @@ jobs:
           python-version: '3.10'
 
       - name: Install dependencies
-        run: pip install requests beautifulsoup4
+        run: pip install requests beautifulsoup4 pandas selenium
+
+      - name: Create data directory
+        run: mkdir -p data
 
       # --- ALFA ROMEO TASK ---
       - name: Run Alfa Romeo Scraper
-        run: python alfa_romeo_inventory_scraper.py
+        run: python scrapers/alfa_inventory.py
 
       - name: Update Alfa Gist
         uses: exuanbo/actions-deploy-gist@v1
         with:
           token: ${{ secrets.GIST_TOKEN }}
           gist_id: 4d86df02798a5e87c6cdb7b358904717
-          file_path: alfa_romeo_inventory.csv
+          file_path: data/alfa_romeo_inventory.csv
 
       # --- DS AUTOMOBILES TASK ---
       - name: Run DS Scraper
-        run: python ds_inventory_scraper.py
+        run: python scrapers/ds_inventory.py
 
       - name: Update DS Gist
         uses: exuanbo/actions-deploy-gist@v1
         with:
           token: ${{ secrets.GIST_TOKEN }}
           gist_id: c0685fee7a36d746f530d28c18b05ae6
-          file_path: ds_inventory.csv
+          file_path: data/ds_inventory.csv

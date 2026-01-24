@@ -3,11 +3,12 @@ import csv
 import json
 import re
 import time
+import os
 from datetime import datetime
 
 # Konfiguracja
 API_URL = "https://salon.alfaromeo.pl/api/offers/list-alfa-romeo.json"
-OUTPUT_FILE = "alfa_romeo_inventory.csv"
+OUTPUT_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "alfa_romeo_inventory.csv")
 BASE_URL = "https://salon.alfaromeo.pl/oferta"
 
 BODY_STYLE_MAP = {
@@ -153,7 +154,7 @@ def main():
             "state_of_vehicle": "New" if (offer.get("mileage") or 0) < 100 else "Used",
             "price": f"{price_brutto} PLN",
             "currency": "PLN",
-            "address": format_address_json(street, city, region, "PL", post_code),
+            "address": f"{street}, {city}, Polska",
             "latitude": lat,
             "longitude": lon,
             "offer_type": "LEASE",
