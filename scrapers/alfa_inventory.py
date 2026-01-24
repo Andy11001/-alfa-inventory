@@ -23,9 +23,16 @@ def get_body_style(model_name):
     return "SUV"
 
 def format_address_json(street, city, region, country, post_code=None):
-    addr = {"addr1": street, "city": city, "region": region, "country": country}
+    # Mapowanie 'Polska' na 'PL' i wymuszenie uppercase
+    country_code = "PL" if country.lower() in ["polska", "pl"] else country
+    addr = {
+        "addr1": street.upper(),
+        "city": city.upper(),
+        "region": region.upper(),
+        "country": country_code.upper()
+    }
     if post_code:
-        addr["zip"] = post_code
+        addr["postal_code"] = post_code
     return json.dumps(addr, ensure_ascii=False)
 
 def main():
@@ -154,7 +161,7 @@ def main():
             "state_of_vehicle": "New" if (offer.get("mileage") or 0) < 100 else "Used",
             "price": f"{price_brutto} PLN",
             "currency": "PLN",
-            "address": f"{street.upper()}, {city.upper()}, Polska",
+            "address": format_address_json(street, city, region, "PL", post_code),
             "latitude": lat,
             "longitude": lon,
             "offer_type": "LEASE",

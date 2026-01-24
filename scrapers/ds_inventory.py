@@ -19,6 +19,29 @@ MODEL_MAP = {
     "n8": "N°8"
 }
 
+CITY_TO_REGION = {
+    "Kraków": "Małopolskie",
+    "Warszawa": "Mazowieckie",
+    "Wrocław": "Dolnośląskie",
+    "Poznań": "Wielkopolskie",
+    "Gdańsk": "Pomorskie",
+    "Katowice": "Śląskie",
+    "Łódź": "Łódzkie",
+    "Szczecin": "Zachodniopomorskie",
+    "Opole": "Opolskie",
+    "Bielsko-Biała": "Śląskie"
+}
+
+def format_address_json(street, city):
+    region = CITY_TO_REGION.get(city, "Mazowieckie")
+    addr = {
+        "addr1": street.upper(),
+        "city": city.upper(),
+        "region": region.upper(),
+        "country": "PL"
+    }
+    return json.dumps(addr, ensure_ascii=False)
+
 # Hardcoded Dealer Locations (Lat/Lon + Street Address)
 DEALER_LOCATIONS = {
     "Kraków": {"lat": "50.0931", "lon": "19.9238", "street": "ul. Opolska 9"},
@@ -84,8 +107,8 @@ def parse_detail_page(url, session):
         lon = dealer_data["lon"]
         street = dealer_data.get("street", "Al. Krakowska 206")
 
-        # Ujednolicenie formatu do Alfy (STREET, CITY, Polska)
-        address_text = f"{street.upper()}, {detected_city.upper()}, Polska"
+        # Format adresu jako JSON (wymagane przez system)
+        address_text = format_address_json(street, detected_city)
 
         year_match = re.search(r'Rok produkcji\s*[:\-]?\s*(\d{4})', text_content, re.IGNORECASE)
         if year_match:
@@ -95,7 +118,8 @@ def parse_detail_page(url, session):
         
     except Exception as e:
         print(f"Błąd parsowania {url}: {e}")
-        return "", "AL. KRAKOWSKA 206, WARSZAWA, Polska", "2024", "", ""
+        fallback_addr = format_address_json("Al. Krakowska 206", "Warszawa")
+        return "", fallback_addr, "2024", "", ""
 
 def main():
     print("Pobieranie listy pojazdów z API sklepu DS...")
