@@ -5,7 +5,10 @@ import re
 import time
 import os
 from bs4 import BeautifulSoup
-from scrapers.image_processor import process_image
+try:
+    from scrapers.image_processor import process_image
+except ModuleNotFoundError:
+    from image_processor import process_image
 
 API_URL = "https://sklep.dsautomobiles.pl/wp-json/wp/v2/product"
 OUTPUT_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "ds_inventory.csv")
