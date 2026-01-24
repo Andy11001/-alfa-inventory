@@ -138,6 +138,28 @@ def parse_detail_page(url, session):
         fallback_addr = format_address_json("Al. Krakowska 206", "Warszawa")
         return "", fallback_addr, "2024", "", ""
 
+def cleanup_images(current_vins):
+    """Usuwa zdjęcia, których nie ma już w aktualnej liście ofert."""
+    if not os.path.exists(IMAGES_DIR):
+        return
+        
+    print("Czyszczenie folderu ze zdjęciami...")
+    all_files = os.listdir(IMAGES_DIR)
+    removed_count = 0
+    
+    for filename in all_files:
+        if filename.endswith(".jpg"):
+            vin = filename.replace(".jpg", "")
+            if vin not in current_vins:
+                try:
+                    os.remove(os.path.join(IMAGES_DIR, filename))
+                    removed_count += 1
+                except Exception as e:
+                    print(f"Błąd podczas usuwania {filename}: {e}")
+    
+    if removed_count > 0:
+        print(f"Usunięto {removed_count} nieaktualnych zdjęć.")
+
 def main():
     print("Pobieranie listy pojazdów z API sklepu DS...")
     all_products = []
@@ -299,6 +321,10 @@ def main():
         processed_rows.append(row)
 
     print(f"\nZapisano {len(processed_rows)} ofert.")
+    
+    # Czyszczenie starych zdjęć
+    current_vins = [r['vehicle_id'] for r in processed_rows]
+    cleanup_images(current_vins)
     
     with open(OUTPUT_FILE, 'w', newline='', encoding='utf-8-sig') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction='ignore')

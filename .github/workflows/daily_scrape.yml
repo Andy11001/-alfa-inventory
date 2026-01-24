@@ -37,8 +37,8 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add data/*.csv data/images/*.jpg
-          git commit -m "Auto: update inventory and images [skip ci]" || echo "No changes to commit"
+          git add -A
+          git commit -m "Auto: update inventory and cleanup images [skip ci]" || echo "No changes to commit"
           git push origin master
 
       - name: Update Alfa Gist
