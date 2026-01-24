@@ -30,8 +30,8 @@ def process_image(url, output_path):
         else:
             background.paste(img, offset)
             
-        # Dodawanie ramki (kolor: #2596be)
-        border_color = (37, 150, 190)
+        # Dodawanie ramki (kolor: #b5a298)
+        border_color = (181, 162, 152)
         border_width = 15
         background = ImageOps.expand(background, border=border_width, fill=border_color)
         
