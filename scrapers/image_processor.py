@@ -3,8 +3,8 @@ from PIL import Image, ImageOps
 from io import BytesIO
 import os
 
-def process_image(url, output_path):
-    """Pobiera zdjęcie, dodaje białe tło 600x600 i złotą ramkę."""
+def process_image(url, output_path, border_color_rgb=(181, 162, 152)):
+    """Pobiera zdjęcie, dodaje białe tło 600x600 i ramkę w zadanym kolorze RGB."""
     try:
         response = requests.get(url, timeout=10)
         img = Image.open(BytesIO(response.content)).convert("RGBA")
@@ -30,10 +30,9 @@ def process_image(url, output_path):
         else:
             background.paste(img, offset)
             
-        # Dodawanie ramki (kolor: #b5a298)
-        border_color = (181, 162, 152)
+        # Dodawanie ramki
         border_width = 15
-        background = ImageOps.expand(background, border=border_width, fill=border_color)
+        background = ImageOps.expand(background, border=border_width, fill=border_color_rgb)
         
         # Ponowne skalowanie do 600x600 (po dodaniu ramki obrazek się powiększył)
         background = background.resize(canvas_size, Image.Resampling.LANCZOS)

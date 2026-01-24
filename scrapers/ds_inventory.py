@@ -12,27 +12,15 @@ OUTPUT_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "
 IMAGES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "images")
 GITHUB_BASE_IMAGE_URL = "https://raw.githubusercontent.com/Andy11001/-alfa-inventory/master/data/images"
 
-# Mapa modeli (class_list -> ładna nazwa)
-MODEL_MAP = {
-    "ds-3": "DS 3",
-    "ds-4": "DS 4",
-    "n4": "N°4", 
-    "ds-7": "DS 7",
-    "ds-9": "DS 9",
-    "n8": "N°8"
-}
-
-CITY_TO_REGION = {
-    "Kraków": "Małopolskie",
-    "Warszawa": "Mazowieckie",
-    "Wrocław": "Dolnośląskie",
-    "Poznań": "Wielkopolskie",
-    "Gdańsk": "Pomorskie",
-    "Katowice": "Śląskie",
-    "Łódź": "Łódzkie",
-    "Szczecin": "Zachodniopomorskie",
-    "Opole": "Opolskie",
-    "Bielsko-Biała": "Śląskie"
+COLOR_CONFIG = {
+    "White Pearl": (242, 242, 242),
+    "Blanc Banquise": (242, 242, 242),
+    "Perla Nera Black": (26, 26, 26),
+    "Cristal Pearl": (209, 205, 197),
+    "Crystal Pearl": (209, 205, 197),
+    "Cashmere": (118, 121, 130),
+    "Night Flight": (62, 65, 73),
+    "Lazurite Blue": (0, 107, 125)
 }
 
 def format_address_json(street, city):
@@ -242,12 +230,15 @@ def main():
             if imgs:
                 image = imgs[0].get("url")
 
-        # --- Image Processing (Resize + Gold Border) ---
+        # --- Image Processing (Resize + Dynamic Color Border) ---
         if image:
             image_filename = f"{vin}.jpg"
             local_image_path = os.path.join(IMAGES_DIR, image_filename)
-            # Przetwarzamy tylko jeśli jeszcze nie istnieje lub zawsze (dla odświeżenia)
-            if process_image(image, local_image_path):
+            
+            # Pobierz kolor z konfiguracji lub użyj domyślnego beżu
+            border_rgb = COLOR_CONFIG.get(color, (181, 162, 152))
+            
+            if process_image(image, local_image_path, border_color_rgb=border_rgb):
                 # Zmieniamy link na bezpośredni link do GitHuba
                 image = f"{GITHUB_BASE_IMAGE_URL}/{image_filename}"
 
