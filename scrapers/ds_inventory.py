@@ -5,9 +5,12 @@ import re
 import time
 import os
 from bs4 import BeautifulSoup
+from scrapers.image_processor import process_image
 
 API_URL = "https://sklep.dsautomobiles.pl/wp-json/wp/v2/product"
 OUTPUT_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "ds_inventory.csv")
+IMAGES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "images")
+GITHUB_BASE_IMAGE_URL = "https://raw.githubusercontent.com/Andy11001/-alfa-inventory/master/data/images"
 
 # Mapa modeli (class_list -> ładna nazwa)
 MODEL_MAP = {
@@ -238,6 +241,15 @@ def main():
             imgs = product.get("yoast_head_json")["og_image"]
             if imgs:
                 image = imgs[0].get("url")
+
+        # --- Image Processing (Resize + Gold Border) ---
+        if image:
+            image_filename = f"{vin}.jpg"
+            local_image_path = os.path.join(IMAGES_DIR, image_filename)
+            # Przetwarzamy tylko jeśli jeszcze nie istnieje lub zawsze (dla odświeżenia)
+            if process_image(image, local_image_path):
+                # Zmieniamy link na bezpośredni link do GitHuba
+                image = f"{GITHUB_BASE_IMAGE_URL}/{image_filename}"
 
         desc = f"{desc_api[:450]}"
 
