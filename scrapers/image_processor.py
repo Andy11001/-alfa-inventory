@@ -30,10 +30,10 @@ def process_image(url, output_path):
         else:
             background.paste(img, offset)
             
-        # Dodawanie złotej ramki (kolor złoty: #D4AF37)
-        gold_color = (212, 175, 55)
-        border_width = 8
-        background = ImageOps.expand(background, border=border_width, fill=gold_color)
+        # Dodawanie ramki (kolor: #2596be)
+        border_color = (37, 150, 190)
+        border_width = 15
+        background = ImageOps.expand(background, border=border_width, fill=border_color)
         
         # Ponowne skalowanie do 600x600 (po dodaniu ramki obrazek się powiększył)
         background = background.resize(canvas_size, Image.Resampling.LANCZOS)
