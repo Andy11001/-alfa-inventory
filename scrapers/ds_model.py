@@ -11,6 +11,9 @@ from urllib.parse import urljoin
 BASE_URL = "https://www.dsautomobiles.pl"
 RANGE_URL = "https://www.dsautomobiles.pl/gama-ds.html"
 OUTPUT_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "ds_model_feed.csv")
+COLORS_JSON_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "ds_colors.json")
+IMAGES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "images")
+GITHUB_REPO_URL = "https://raw.githubusercontent.com/Andy11001/-alfa-inventory/master/data/images/"
 
 def clean_title(title):
     if not title: return ""
@@ -25,6 +28,47 @@ def clean_price(price_str):
     if not price_str: return 0
     clean = re.sub(r'[^\d]', '', str(price_str))
     return int(clean) if clean else 0
+
+def load_colors_json():
+    if not os.path.exists(COLORS_JSON_FILE):
+        return {}
+    try:
+        with open(COLORS_JSON_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"❌ Błąd ładowania ds_colors.json: {e}")
+        return {}
+
+def normalize_model_name_for_filename(model_name):
+    """
+    DS N°4 HYBRID -> DSN4HYBRID
+    DS 3 E-TENSE -> DS3ETENSE
+    """
+    name = model_name.upper()
+    name = name.replace("N°", "N").replace(" ", "").replace("-", "")
+    return name
+
+def get_image_from_db(model_name, color_data):
+    """
+    Pobiera URL obrazka dla danego koloru.
+    Priorytet 1: Plik lokalny w data/images (zwraca link GitHub)
+    Priorytet 2: URL z ds_colors.json (visuel3d)
+    """
+    color_code = color_data.get("color_code")
+    visuel_url = color_data.get("image_url")
+    
+    if not color_code:
+        return visuel_url
+
+    # Konstrukcja nazwy pliku
+    model_part = normalize_model_name_for_filename(model_name)
+    filename = f"{model_part}_{color_code}.jpg"
+    local_path = os.path.join(IMAGES_DIR, filename)
+
+    if os.path.exists(local_path):
+        return f"{GITHUB_REPO_URL}{filename}"
+    
+    return visuel_url
 
 def get_menu_structure(session):
     """
@@ -44,67 +88,9 @@ def get_menu_structure(session):
         
         # Szukamy konfiguracji nagłówka (menu)
         header = soup.find("div", attrs={"data-app-wl": "WlUnifiedHeader"})
-        if not header or not header.get("data-props"):
+        if not header:
             print("❌ Nie znaleziono komponentu WlUnifiedHeader")
             return []
-
-        props = json.loads(header["data-props"])
-        hamburger = props.get("hamburgermenu", {})
-        
-        # 1. Budujemy mapę obrazków (pathQuery -> Image URL)
-        image_map = {}
-        
-        # Mapowanie główne
-        for mapping in hamburger.get("modelTagMapping", []):
-            pq = mapping.get("pathQuery")
-            img = mapping.get("image", {}).get("desktopImg")
-            if pq and img:
-                image_map[pq] = urljoin(BASE_URL, img)
-        
-        # Mapowanie podmodeli (wersje silnikowe, edycje specjalne)
-        for mapping in hamburger.get("subModelTagMapping", []):
-            pq = mapping.get("pathQuery")
-            img = mapping.get("image", {}).get("desktopImg")
-            if pq and img:
-                image_map[pq] = urljoin(BASE_URL, img)
-
-        # 2. Iterujemy po modelach z cache menu
-        for model in hamburger.get("modelsCache", []):
-            main_name = clean_title(model.get("name"))
-            
-            # Główny model (często jako kontener)
-            # Jeśli ma submodele, to one są ważniejsze
-            sub_models = model.get("subModels", [])
-            
-            if sub_models:
-                for sm in sub_models:
-                    name = clean_title(sm.get("name"))
-                    if not name: name = main_name # Fallback name
-                    
-                    pq = sm.get("pathQuery")
-                    
-                    # Szukamy linku w strukturze menu, która jest nieco głębiej
-                    # Ale modelCache ma też pole 'modelPathQuery' lub można próbować zgadnąć URL
-                    # W JSONie wyżej widać, że linki są w 'menu' -> 'menuItem' -> ... ale to skomplikowane.
-                    # Prościej: w 'modelsCache' brakuje URLi wprost, musimy je zmapować z 'modelTagMapping' lub 'switchLinks' na stronie modelu
-                    # ALE w tym JSONie z poprzedniego kroku widziałem linki w sekcji "subModelTagMapping"? Nie, tam są obrazki.
-                    # Wróćmy do analizy html. WlUnifiedHeader ma sekcję "menu", tam są linki.
-                    
-                    # Alternatywa: Użyjmy pathQuery do znalezienia URL w innym miejscu lub po prostu zbudujmy URL
-                    # W poprzednim output 'switchLinks' na stronie modelu miały URLe.
-                    
-                    # Spróbujmy wyciągnąć URL z sekcji 'menu' w propsach, która jest listą
-                    pass
-
-        # Podejście 2 do wyciągania URLi i Nazw z sekcji "menu" w propsach, która odzwierciedla pasek boczny
-        menu_items = props.get("hamburgermenu", {}).get("menu", [])
-        for item in menu_items:
-            # Szukamy kafelków modeli w "menuVariation": "model"
-            if item.get("menuVariation") == "model":
-                # Tu są "modelTagMapping" które iterowaliśmy wyżej, ale to tylko obrazki.
-                # W HTML wyrenderowanym (SSR) są linki.
-                # Parsowanie wyrenderowanego HTML wewnątrz WlUnifiedHeader może być łatwiejsze niż JSONA dla linków
-                pass
 
         # Parsowanie HTML wewnątrz znacznika, bo jest SSR (Server Side Rendered)
         # To jest klucz do sukcesu - linki są w HTMLu wewnątrz diva data-props
@@ -215,60 +201,6 @@ def get_price_from_page(url, session):
         print(f"⚠️ Błąd pobierania danych ze strony {url}: {e}")
         return 0, 0, ""
 
-def get_colors_from_page(url, session):
-    """
-    Attempts to find color variants directly on the model page.
-    Looks for Wl components with 'slides' or HTML color visualizers.
-    Returns dict: { "Color Name": "Image URL" (or None) }
-    """
-    candidates = {}
-    try:
-        r = session.get(url, timeout=10)
-        if r.status_code != 200: return {}
-        
-        soup = BeautifulSoup(r.text, 'html.parser')
-        
-        # 1. Heuristic: Look for components with 'slides' (Wl components)
-        for div in soup.find_all("div", attrs={"data-app-wl": True}):
-            try:
-                props = json.loads(div["data-props"])
-                if "slides" in props and isinstance(props["slides"], list):
-                    temp_candidates = {}
-                    for slide in props["slides"]:
-                        title = slide.get("title", "").strip()
-                        img_obj = slide.get("image", {})
-                        img_src = img_obj.get("desktopImg") or img_obj.get("src")
-                        
-                        if title and img_src:
-                            clean_t = BeautifulSoup(title, 'html.parser').get_text(" ", strip=True)
-                            if 3 < len(clean_t) < 40:
-                                full_img = urljoin(BASE_URL, img_src)
-                                temp_candidates[clean_t] = full_img
-                    
-                    if len(temp_candidates) >= 2:
-                        candidates.update(temp_candidates)
-            except:
-                pass
-
-        # 2. Heuristic: HTML Color Visualizer (e.g. DS N°8)
-        # Structure: div.q-automatic-colour-visualiser_colour_inner > img[title="Color"]
-        # This gives us Names, but often only Thumbnail images.
-        visualizers = soup.find_all("div", class_="q-automatic-colour-visualiser_colour_inner")
-        if visualizers:
-            for div in visualizers:
-                img = div.find("img")
-                if img and img.get("title"):
-                    color_name = img.get("title").strip()
-                    # We usually don't have the full car image here, just a patch.
-                    # We store None to indicate "Found name, but no car image".
-                    if color_name not in candidates:
-                         candidates[color_name] = None
-
-    except Exception as e:
-        print(f"⚠️ Błąd pobierania kolorów ze strony: {e}")
-        
-    return candidates
-
 def load_inventory_colors():
     """
     Loads ds_inventory.csv and returns a map:
@@ -324,9 +256,10 @@ def run():
     # 1. Pobierz modele z menu
     menu_models = get_menu_structure(session)
     
-    # 2. Load colors
+    # 2. Load colors DB
+    colors_db = load_colors_json()
     inventory_colors = load_inventory_colors()
-    print(f"🎨 Załadowano kolory dla modeli: {list(inventory_colors.keys())}")
+    print(f"🎨 Załadowano bazę kolorów (DB: {len(colors_db)} modeli, Inv: {len(inventory_colors)})")
 
     final_data = []
     seen = set()
@@ -396,36 +329,56 @@ def run():
             "emission_image_link": ""
         }
 
-        # 1. Try to get colors from the page directly
-        colors = get_colors_from_page(url, session)
-        source = "Page"
+        # 1. Try to get colors from DB (ds_colors.json)
+        # Match keys in colors_db with current item['title']
+        db_colors = []
+        found_in_db = False
         
-        # 2. If not found, fallback to Inventory
-        if not colors:
-            colors = match_inventory_colors(item['title'], inventory_colors)
-            source = "Inventory"
+        # Try exact match first
+        if item['title'] in colors_db:
+             db_colors = colors_db[item['title']]
+             found_in_db = True
+        else:
+            # Try fuzzy match
+            norm_title = item['title'].upper().replace(" ", "")
+            for db_key, variants in colors_db.items():
+                if db_key.upper().replace(" ", "") in norm_title:
+                    db_colors = variants
+                    found_in_db = True
+                    break
+        
+        if found_in_db and db_colors:
+             print(f"   🎨 Znaleziono {len(db_colors)} kolorów w DB dla {item['title']}")
+             for variant in db_colors:
+                color_name = variant.get("color_name")
+                img_url = get_image_from_db(item['title'], variant)
+                
+                if not color_name or not img_url: continue
 
-        if colors:
-            print(f"   🎨 Znaleziono {len(colors)} kolorów dla {item['title']} (Źródło: {source})")
-            for color_name, color_img in colors.items():
                 record = base_record.copy()
                 record["exterior_color"] = color_name
-                
-                # Use specific color image if available, else default model image
-                if color_img:
-                    record["image_link"] = color_img
-                else:
-                    record["image_link"] = item['image_url'] # Fallback
-                    
-                # Create unique ID for color variant
+                record["image_link"] = img_url
                 record["vehicle_id"] = f"{base_record['vehicle_id']}-{abs(hash(color_name))}"
                 final_data.append(record)
+
         else:
-            print(f"   ⚠️ Brak kolorów dla {item['title']}, używam domyślnego.")
-            record = base_record.copy()
-            record["exterior_color"] = "Standard"
-            record["image_link"] = item['image_url']
-            final_data.append(record)
+            # 2. Fallback to Inventory
+            inv_colors = match_inventory_colors(item['title'], inventory_colors)
+            if inv_colors:
+                print(f"   🎨 Znaleziono {len(inv_colors)} kolorów w Inventory dla {item['title']}")
+                for color_name, color_img in inv_colors.items():
+                    record = base_record.copy()
+                    record["exterior_color"] = color_name
+                    record["image_link"] = color_img or item['image_url']
+                    record["vehicle_id"] = f"{base_record['vehicle_id']}-{abs(hash(color_name))}"
+                    final_data.append(record)
+            else:
+                # 3. Last resort: Default
+                print(f"   ⚠️ Brak kolorów dla {item['title']}, używam domyślnego.")
+                record = base_record.copy()
+                record["exterior_color"] = "Standard"
+                record["image_link"] = item['image_url']
+                final_data.append(record)
 
     # Zapis
     if final_data:
