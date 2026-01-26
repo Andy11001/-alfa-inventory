@@ -1,0 +1,64 @@
+{
+  "620": {
+    "1A5|5|000": "Sprint",
+    "1A5|5|VEL": "Veloce",
+    "AA5|5|000": "Intensa",
+    "QRU|5|000": "Quadrifoglio",
+    "_model_name": "Giulia Quadrifoglio MY24"
+  },
+  "622": {
+    "AFH|2|000": "Intensa",
+    "DER|0|000": "Veloce",
+    "MFD|3|VEL": "Veloce",
+    "HER|0|000": "Edizione Speciale",
+    "MET|1|000": "Sprint",
+    "MFD|3|SPR": "Sprint",
+    "MF2|2|000": "Sprint",
+    "MFD|3|000": "Tonale",
+    "MFG|1|000": "Sprint",
+    "MFH|1|000": "Sprint",
+    "MFH|1|VEL": "Veloce",
+    "MFH|2|000": "Sprint",
+    "NFD|3|000": "Sport Speciale",
+    "RER|0|000": "Ti",
+    "MFD|3|TI0": "Ti",
+    "TET|1|000": "Tributo",
+    "TFH|1|000": "Tributo",
+    "_model_name": "Tonale Ibrida MY26"
+  },
+  "626": {
+    "A23|0|000": "Intensa",
+    "A43|0|000": "Intensa",
+    "E23|0|000": "Ibrida",
+    "E23|1|000": "Junior",
+    "E43|0|000": "Ibrida Q4",
+    "E43|1|000": "Sprint",
+    "L23|0|000": "Ibrida Speciale",
+    "S23|1|000": "Sport Speciale",
+    "_model_name": "Junior Ibrida MY26"
+  },
+  "627": {
+    "E2E|1|000": "Elettrica",
+    "S2E|1|000": "Sport Speciale",
+    "V2R|1|000": "Veloce",
+    "_model_name": "Junior Elettrica"
+  },
+  "630": {
+    "1A5|5|000": "Sprint",
+    "1A5|5|VEL": "Veloce",
+    "AA5|5|000": "Intensa",
+    "AAQ|5|000": "Intensa",
+    "LAU|5|000": "Quadrifoglio",
+    "QAU|5|000": "Quadrifoglio",
+    "_model_name": "Stelvio"
+  },
+  "638": {
+    "MET|2|000": "Sprint",
+    "MEF|3|000": "Tonale",
+    "MEF|3|SPR": "Sprint",
+    "MEF|3|TI0": "Ti",
+    "MEF|3|VEL": "Veloce",
+    "NEF|3|000": "Sport Speciale",
+    "_model_name": "TONALE IBRIDA PLUG-IN"
+  }
+}

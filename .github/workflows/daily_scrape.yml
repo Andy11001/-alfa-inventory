@@ -1,4 +1,4 @@
-name: Daily Inventory Feed Update (Alfa & DS)
+name: Daily Inventory & Model Feed Update
 
 on:
   schedule:
@@ -25,36 +25,56 @@ jobs:
       - name: Create data and images directories
         run: mkdir -p data/images
 
-      # --- ALFA ROMEO TASK ---
-      - name: Run Alfa Romeo Scraper
+      # --- INVENTORY SCRAPERS ---
+      - name: Run Alfa Romeo Inventory Scraper
         run: PYTHONPATH=. python scrapers/alfa_inventory.py
 
-      # --- DS AUTOMOBILES TASK ---
-      - name: Run DS Scraper
+      - name: Run DS Automobiles Inventory Scraper
         run: PYTHONPATH=. python scrapers/ds_inventory.py
 
+      # --- MODEL FEED SCRAPERS ---
+      - name: Run Alfa Romeo Model Feed (Auto-Discovery)
+        run: PYTHONPATH=. python scrapers/alfa_model.py
+
+      - name: Run DS Automobiles Model Feed (Dynamic)
+        run: PYTHONPATH=. python scrapers/ds_model.py
+
+      # --- COMMIT CHANGES ---
       - name: Commit and push changes (including images)
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add -A
-          git commit -m "Auto: update inventory and cleanup images [skip ci]" || echo "No changes to commit"
+          git commit -m "Auto: update inventory and model feeds [skip ci]" || echo "No changes to commit"
           git push origin master
 
-      - name: Update Alfa Gist
+      # --- DEPLOY GISTS (Inventory) ---
+      - name: Update Alfa Inventory Gist
         uses: exuanbo/actions-deploy-gist@v1
         with:
           token: ${{ secrets.GIST_TOKEN }}
           gist_id: 4d86df02798a5e87c6cdb7b358904717
           file_path: data/alfa_romeo_inventory.csv
 
-      # --- DS AUTOMOBILES TASK ---
-      - name: Run DS Scraper
-        run: python scrapers/ds_inventory.py
-
-      - name: Update DS Gist
+      - name: Update DS Inventory Gist
         uses: exuanbo/actions-deploy-gist@v1
         with:
           token: ${{ secrets.GIST_TOKEN }}
           gist_id: c0685fee7a36d746f530d28c18b05ae6
           file_path: data/ds_inventory.csv
+
+      # --- DEPLOY GISTS (Model Feeds) ---
+      # Użytkownik musi utworzyć nowe Gisty i uzupełnić ID poniżej
+      - name: Update Alfa Model Feed Gist
+        uses: exuanbo/actions-deploy-gist@v1
+        with:
+          token: ${{ secrets.GIST_TOKEN }}
+          gist_id: TODO_ENTER_ALFA_MODEL_GIST_ID
+          file_path: data/alfa_model_final.csv
+
+      - name: Update DS Model Feed Gist
+        uses: exuanbo/actions-deploy-gist@v1
+        with:
+          token: ${{ secrets.GIST_TOKEN }}
+          gist_id: TODO_ENTER_DS_MODEL_GIST_ID
+          file_path: data/ds_model_feed.csv

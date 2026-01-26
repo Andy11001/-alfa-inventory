@@ -21,8 +21,8 @@ SCRIPTS = {
 DATA_FILES = {
     'alfa_inventory': os.path.join(DATA_DIR, "alfa_romeo_inventory.csv"),
     'ds_inventory': os.path.join(DATA_DIR, "ds_inventory.csv"),
-    'alfa_model': os.path.join(DATA_DIR, "alfa_model.csv"),
-    'ds_model': os.path.join(DATA_DIR, "ds_model.csv")
+    'alfa_model': os.path.join(DATA_DIR, "alfa_model_final.csv"),
+    'ds_model': os.path.join(DATA_DIR, "ds_model_feed.csv")
 }
 
 @app.route('/')

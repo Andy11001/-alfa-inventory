@@ -1,0 +1,412 @@
+{
+    "DS N°4 E-TENSE": [
+        {
+            "model": "DS N°4 E-TENSE",
+            "color_name": "White Pearl",
+            "color_code": "0MM60NN9",
+            "version_code": "1SD4A5NJHWC0A060",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SD4A5NJHWC0A060&color=0MM60NN9&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/dsn4/e-tense.html"
+        },
+        {
+            "model": "DS N°4 E-TENSE",
+            "color_name": "Perla Nera Black",
+            "color_code": "0MM00N9V",
+            "version_code": "1SD4A5NJHWC0A060",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SD4A5NJHWC0A060&color=0MM00N9V&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/dsn4/e-tense.html"
+        },
+        {
+            "model": "DS N°4 E-TENSE",
+            "color_name": "Night Flight",
+            "color_code": "0MM00NA1",
+            "version_code": "1SD4A5NJHWC0A060",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SD4A5NJHWC0A060&color=0MM00NA1&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/dsn4/e-tense.html"
+        },
+        {
+            "model": "DS N°4 E-TENSE",
+            "color_name": "Cashmere",
+            "color_code": "0MP00NSD",
+            "version_code": "1SD4A5NJHWC0A060",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SD4A5NJHWC0A060&color=0MP00NSD&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/dsn4/e-tense.html"
+        },
+        {
+            "model": "DS N°4 E-TENSE",
+            "color_name": "Crystal Pearl",
+            "color_code": "0MM00NPH",
+            "version_code": "1SD4A5NJHWC0A060",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SD4A5NJHWC0A060&color=0MM00NPH&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/dsn4/e-tense.html"
+        }
+    ],
+    "DS N°4 HYBRID": [
+        {
+            "model": "DS N°4 HYBRID",
+            "color_name": "White Pearl",
+            "color_code": "0MM60NN9",
+            "version_code": "1SD4A5NJHWC0A060",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SD4A5NJHWC0A060&color=0MM60NN9&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/dsn4/hybrid.html"
+        },
+        {
+            "model": "DS N°4 HYBRID",
+            "color_name": "Perla Nera Black",
+            "color_code": "0MM00N9V",
+            "version_code": "1SD4A5NJHWC0A060",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SD4A5NJHWC0A060&color=0MM00N9V&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/dsn4/hybrid.html"
+        },
+        {
+            "model": "DS N°4 HYBRID",
+            "color_name": "Night Flight",
+            "color_code": "0MM00NA1",
+            "version_code": "1SD4A5NJHWC0A060",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SD4A5NJHWC0A060&color=0MM00NA1&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/dsn4/hybrid.html"
+        },
+        {
+            "model": "DS N°4 HYBRID",
+            "color_name": "Cashmere",
+            "color_code": "0MP00NSD",
+            "version_code": "1SD4A5NJHWC0A060",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SD4A5NJHWC0A060&color=0MP00NSD&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/dsn4/hybrid.html"
+        },
+        {
+            "model": "DS N°4 HYBRID",
+            "color_name": "Crystal Pearl",
+            "color_code": "0MM00NPH",
+            "version_code": "1SD4A5NJHWC0A060",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SD4A5NJHWC0A060&color=0MM00NPH&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/dsn4/hybrid.html"
+        }
+    ],
+    "DS N°4 PLUG-IN-HYBRID": [
+        {
+            "model": "DS N°4 PLUG-IN-HYBRID",
+            "color_name": "White Pearl",
+            "color_code": "0MM60NN9",
+            "version_code": "1SD4A5NJHWC0A060",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SD4A5NJHWC0A060&color=0MM60NN9&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/dsn4/plug-in-hybrid.html"
+        },
+        {
+            "model": "DS N°4 PLUG-IN-HYBRID",
+            "color_name": "Perla Nera Black",
+            "color_code": "0MM00N9V",
+            "version_code": "1SD4A5NJHWC0A060",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SD4A5NJHWC0A060&color=0MM00N9V&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/dsn4/plug-in-hybrid.html"
+        },
+        {
+            "model": "DS N°4 PLUG-IN-HYBRID",
+            "color_name": "Night Flight",
+            "color_code": "0MM00NA1",
+            "version_code": "1SD4A5NJHWC0A060",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SD4A5NJHWC0A060&color=0MM00NA1&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/dsn4/plug-in-hybrid.html"
+        },
+        {
+            "model": "DS N°4 PLUG-IN-HYBRID",
+            "color_name": "Cashmere",
+            "color_code": "0MP00NSD",
+            "version_code": "1SD4A5NJHWC0A060",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SD4A5NJHWC0A060&color=0MP00NSD&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/dsn4/plug-in-hybrid.html"
+        },
+        {
+            "model": "DS N°4 PLUG-IN-HYBRID",
+            "color_name": "Crystal Pearl",
+            "color_code": "0MM00NPH",
+            "version_code": "1SD4A5NJHWC0A060",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SD4A5NJHWC0A060&color=0MM00NPH&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/dsn4/plug-in-hybrid.html"
+        }
+    ],
+    "DS N°8": [
+        {
+            "model": "DS N°8",
+            "color_name": "Perla Nera Black",
+            "color_code": "0MM00N9V",
+            "version_code": "1SQ8A5LFAFC0A012",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SQ8A5LFAFC0A012&color=0MM00N9V&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/dsn8.html"
+        },
+        {
+            "model": "DS N°8",
+            "color_name": "Palladium Grey",
+            "color_code": "0MM00NGG",
+            "version_code": "1SQ8A5LFAFC0A012",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SQ8A5LFAFC0A012&color=0MM00NGG&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/dsn8.html"
+        },
+        {
+            "model": "DS N°8",
+            "color_name": "Topaz Blue",
+            "color_code": "0MM00NBC",
+            "version_code": "1SQ8A5LFAFC0A012",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SQ8A5LFAFC0A012&color=0MM00NBC&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/dsn8.html"
+        },
+        {
+            "model": "DS N°8",
+            "color_name": "Alabaster White",
+            "color_code": "0MM00NSU",
+            "version_code": "1SQ8A5LFAFC0A012",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SQ8A5LFAFC0A012&color=0MM00NSU&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/dsn8.html"
+        },
+        {
+            "model": "DS N°8",
+            "color_name": "Crystal Pearl",
+            "color_code": "0MM00NPH",
+            "version_code": "1SQ8A5LFAFC0A012",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SQ8A5LFAFC0A012&color=0MM00NPH&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/dsn8.html"
+        }
+    ],
+    "DS 3 HYBRID": [
+        {
+            "model": "DS 3 HYBRID",
+            "color_name": "Perla Nera Black",
+            "color_code": "0MM00N9V",
+            "version_code": "1SD3SYNJHWC0A070",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SD3SYNJHWC0A070&color=0MM00N9V&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/ds-3/hybrydowy.html"
+        },
+        {
+            "model": "DS 3 HYBRID",
+            "color_name": "Blanc Banquise",
+            "color_code": "0MP00NWP",
+            "version_code": "1SD3SYNJHWC0A070",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SD3SYNJHWC0A070&color=0MP00NWP&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/ds-3/hybrydowy.html"
+        },
+        {
+            "model": "DS 3 HYBRID",
+            "color_name": "Night Flight",
+            "color_code": "0MM00NA1",
+            "version_code": "1SD3SYNJHWC0A070",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SD3SYNJHWC0A070&color=0MM00NA1&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/ds-3/hybrydowy.html"
+        },
+        {
+            "model": "DS 3 HYBRID",
+            "color_name": "Lazurite Blue",
+            "color_code": "0MM00NHZ",
+            "version_code": "1SD3SYNJHWC0A070",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SD3SYNJHWC0A070&color=0MM00NHZ&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/ds-3/hybrydowy.html"
+        },
+        {
+            "model": "DS 3 HYBRID",
+            "color_name": "Cashmere",
+            "color_code": "0MP00NSD",
+            "version_code": "1SD3SYNJHWC0A070",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SD3SYNJHWC0A070&color=0MP00NSD&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/ds-3/hybrydowy.html"
+        },
+        {
+            "model": "DS 3 HYBRID",
+            "color_name": "Cristal Pearl",
+            "color_code": "0MM00NPH",
+            "version_code": "1SD3SYNJHWC0A070",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SD3SYNJHWC0A070&color=0MM00NPH&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/ds-3/hybrydowy.html"
+        }
+    ],
+    "DS 7 HYBRID PLUG-IN": [
+        {
+            "model": "DS 7 HYBRID PLUG-IN",
+            "color_name": "Perla Nera Black",
+            "color_code": "0MM00N9V",
+            "version_code": "1SX8SUTP41B0A060",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SX8SUTP41B0A060&color=0MM00N9V&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/ds-7/hybrydowy.html"
+        },
+        {
+            "model": "DS 7 HYBRID PLUG-IN",
+            "color_name": "Lacquered Grey",
+            "color_code": "0MM00NSC",
+            "version_code": "1SX8SUTP41B0A060",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SX8SUTP41B0A060&color=0MM00NSC&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/ds-7/hybrydowy.html"
+        },
+        {
+            "model": "DS 7 HYBRID PLUG-IN",
+            "color_name": "Night Flight",
+            "color_code": "0MM00NA1",
+            "version_code": "1SX8SUTP41B0A060",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SX8SUTP41B0A060&color=0MM00NA1&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/ds-7/hybrydowy.html"
+        },
+        {
+            "model": "DS 7 HYBRID PLUG-IN",
+            "color_name": "Sapphire Blue",
+            "color_code": "0MM00N6L",
+            "version_code": "1SX8SUTP41B0A060",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SX8SUTP41B0A060&color=0MM00N6L&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/ds-7/hybrydowy.html"
+        },
+        {
+            "model": "DS 7 HYBRID PLUG-IN",
+            "color_name": "Cristal Pearl",
+            "color_code": "0MM00NPH",
+            "version_code": "1SX8SUTP41B0A060",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SX8SUTP41B0A060&color=0MM00NPH&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/ds-7/hybrydowy.html"
+        },
+        {
+            "model": "DS 7 HYBRID PLUG-IN",
+            "color_name": "Titanium Grey",
+            "color_code": "0MM00N1J",
+            "version_code": "1SX8SUTP41B0A060",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SX8SUTP41B0A060&color=0MM00N1J&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/ds-7/hybrydowy.html"
+        }
+    ],
+    "DS 7 DIESEL": [
+        {
+            "model": "DS 7 DIESEL",
+            "color_name": "Perla Nera Black",
+            "color_code": "0MM00N9V",
+            "version_code": "1SX8SUTP41B0A060",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SX8SUTP41B0A060&color=0MM00N9V&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/ds-7/diesel.html"
+        },
+        {
+            "model": "DS 7 DIESEL",
+            "color_name": "Lacquered Grey",
+            "color_code": "0MM00NSC",
+            "version_code": "1SX8SUTP41B0A060",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SX8SUTP41B0A060&color=0MM00NSC&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/ds-7/diesel.html"
+        },
+        {
+            "model": "DS 7 DIESEL",
+            "color_name": "Night Flight",
+            "color_code": "0MM00NA1",
+            "version_code": "1SX8SUTP41B0A060",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SX8SUTP41B0A060&color=0MM00NA1&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/ds-7/diesel.html"
+        },
+        {
+            "model": "DS 7 DIESEL",
+            "color_name": "Sapphire Blue",
+            "color_code": "0MM00N6L",
+            "version_code": "1SX8SUTP41B0A060",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SX8SUTP41B0A060&color=0MM00N6L&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/ds-7/diesel.html"
+        },
+        {
+            "model": "DS 7 DIESEL",
+            "color_name": "Cristal Pearl",
+            "color_code": "0MM00NPH",
+            "version_code": "1SX8SUTP41B0A060",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SX8SUTP41B0A060&color=0MM00NPH&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/ds-7/diesel.html"
+        },
+        {
+            "model": "DS 7 DIESEL",
+            "color_name": "Titanium Grey",
+            "color_code": "0MM00N1J",
+            "version_code": "1SX8SUTP41B0A060",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SX8SUTP41B0A060&color=0MM00N1J&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/ds-7/diesel.html"
+        }
+    ],
+    "DS 3 E-TENSE": [
+        {
+            "model": "DS 3 E-TENSE",
+            "color_name": "Perla Nera Black",
+            "color_code": "0MM00N9V",
+            "version_code": "1SD3SYNJHWC0A070",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SD3SYNJHWC0A070&color=0MM00N9V&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/ds-3/elektryczny.html"
+        },
+        {
+            "model": "DS 3 E-TENSE",
+            "color_name": "Blanc Banquise",
+            "color_code": "0MP00NWP",
+            "version_code": "1SD3SYNJHWC0A070",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SD3SYNJHWC0A070&color=0MP00NWP&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/ds-3/elektryczny.html"
+        },
+        {
+            "model": "DS 3 E-TENSE",
+            "color_name": "Night Flight",
+            "color_code": "0MM00NA1",
+            "version_code": "1SD3SYNJHWC0A070",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SD3SYNJHWC0A070&color=0MM00NA1&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/ds-3/elektryczny.html"
+        },
+        {
+            "model": "DS 3 E-TENSE",
+            "color_name": "Lazurite Blue",
+            "color_code": "0MM00NHZ",
+            "version_code": "1SD3SYNJHWC0A070",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SD3SYNJHWC0A070&color=0MM00NHZ&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/ds-3/elektryczny.html"
+        },
+        {
+            "model": "DS 3 E-TENSE",
+            "color_name": "Cashmere",
+            "color_code": "0MP00NSD",
+            "version_code": "1SD3SYNJHWC0A070",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SD3SYNJHWC0A070&color=0MP00NSD&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/ds-3/elektryczny.html"
+        },
+        {
+            "model": "DS 3 E-TENSE",
+            "color_name": "Cristal Pearl",
+            "color_code": "0MM00NPH",
+            "version_code": "1SD3SYNJHWC0A070",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SD3SYNJHWC0A070&color=0MM00NPH&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/ds-3/elektryczny.html"
+        }
+    ],
+    "DS N°4 DIESEL": [
+        {
+            "model": "DS N°4 DIESEL",
+            "color_name": "White Pearl",
+            "color_code": "0MM60NN9",
+            "version_code": "1SD4A5NJHWC0A060",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SD4A5NJHWC0A060&color=0MM60NN9&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/dsn4/diesel.html"
+        },
+        {
+            "model": "DS N°4 DIESEL",
+            "color_name": "Perla Nera Black",
+            "color_code": "0MM00N9V",
+            "version_code": "1SD4A5NJHWC0A060",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SD4A5NJHWC0A060&color=0MM00N9V&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/dsn4/diesel.html"
+        },
+        {
+            "model": "DS N°4 DIESEL",
+            "color_name": "Night Flight",
+            "color_code": "0MM00NA1",
+            "version_code": "1SD4A5NJHWC0A060",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SD4A5NJHWC0A060&color=0MM00NA1&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/dsn4/diesel.html"
+        },
+        {
+            "model": "DS N°4 DIESEL",
+            "color_name": "Cashmere",
+            "color_code": "0MP00NSD",
+            "version_code": "1SD4A5NJHWC0A060",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SD4A5NJHWC0A060&color=0MP00NSD&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/dsn4/diesel.html"
+        },
+        {
+            "model": "DS N°4 DIESEL",
+            "color_name": "Crystal Pearl",
+            "color_code": "0MM00NPH",
+            "version_code": "1SD4A5NJHWC0A060",
+            "image_url": "https://visuel3d-secure.citroen.com/V3DImage.ashx?client=DI1&version=1SD4A5NJHWC0A060&color=0MM00NPH&width=1200&ratio=1&view=001&format=jpg&quality=95",
+            "source_url": "https://www.dsautomobiles.pl/gama/dsn4/diesel.html"
+        }
+    ]
+}

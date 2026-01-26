@@ -120,12 +120,11 @@
                     <li class="nav-item">
                         <button class="nav-link" id="ds-inv-tab" data-bs-toggle="tab" data-bs-target="#ds-inv-pane" type="button">DS Inventory</button>
                     </li>
-                    <!-- Placeholders for Model tabs -->
                     <li class="nav-item">
-                        <button class="nav-link disabled" id="alfa-mod-tab" type="button">Alfa Model (N/A)</button>
+                        <button class="nav-link" id="alfa-mod-tab" data-bs-toggle="tab" data-bs-target="#alfa-mod-pane" type="button">Alfa Model</button>
                     </li>
                     <li class="nav-item">
-                        <button class="nav-link disabled" id="ds-mod-tab" type="button">DS Model (N/A)</button>
+                        <button class="nav-link" id="ds-mod-tab" data-bs-toggle="tab" data-bs-target="#ds-mod-pane" type="button">DS Model</button>
                     </li>
                 </ul>
             </div>
@@ -136,6 +135,12 @@
                     </div>
                     <div class="tab-pane fade" id="ds-inv-pane">
                         <div id="ds_inventory-table-container">Ładowanie danych...</div>
+                    </div>
+                    <div class="tab-pane fade" id="alfa-mod-pane">
+                        <div id="alfa_model-table-container">Ładowanie danych...</div>
+                    </div>
+                    <div class="tab-pane fade" id="ds-mod-pane">
+                        <div id="ds_model-table-container">Ładowanie danych...</div>
                     </div>
                 </div>
             </div>
@@ -193,8 +198,8 @@
         function refreshTables() {
             loadTable('alfa_inventory');
             loadTable('ds_inventory');
-            // loadTable('alfa_model'); // Uncomment when ready
-            // loadTable('ds_model');   // Uncomment when ready
+            loadTable('alfa_model');
+            loadTable('ds_model');
         }
 
         // Initial Load

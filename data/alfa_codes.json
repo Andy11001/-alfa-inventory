@@ -1,0 +1,194 @@
+{
+  "colors": {
+    "035": "Lakier metalizowany szary - Vesuvio Grey",
+    "136": "Lakier specjalny czerwony - Brera",
+    "181": "Lakier specjalny czerwony z czarnym dachem -Brera",
+    "217": "Lakier pastelowy biały - Alfa White",
+    "222": "Lakier pastelowy  - Alfa White / Czarny dach",
+    "240": "Lakier pastelowy  - Alfa White",
+    "252": "Lakier metalizowany biały - Moonlight Grey",
+    "268": "Lakier pastelowy biały - Sempione",
+    "398": "Lakier specjalny  - Montreal Green",
+    "408": "Lakier metalizowany czarny - Volcano Black",
+    "414": "Lakier pastelowy czerwony - Alfa Red",
+    "468": "Zielony - Verde Monza",
+    "519": "Lakier metalizowany szary - Arese",
+    "522": "Lakier metalizowany niebieski z czarnym dachem - Navigli",
+    "581": "Lakier metalizowany szary - Vesuvio Grey",
+    "598": "Złoty - Giallo Ocra",
+    "601": "Lakier pastelowy czarny - Alfa Black",
+    "636": "Lakier metalizowany szary - Scala",
+    "640": "Lakier metalizowany szary z czarnym dachem - Scala",
+    "645": "Lakier specjalny czerwony - Etna Red",
+    "664": "Lakier metalizowany szary z czarnym dachem - Arese",
+    "688": "Lakier metalizowany niebieski - Navigli",
+    "756": "Lakier metalizowany niebieski - Misano Blue",
+    "934": "Lakier pastelowy biały z czarnym dachem - Sempione",
+    "956": "Lakier pastelowy  - Alfa Red / Czarny dach"
+  },
+  "interiors": {
+    "010": "Fotele Icona podgrzewane z manualną regulacją fotela kierowcy i manualną regulacją fotela pasażera",
+    "027": "Alcantara czarna perforowana z akcentami i podwójnym przeszyciem w kolorze czerwonym",
+    "028": "Fotele obszyte Alcantarą w kolorze czarnym z jasnobrązowymi przeszyciami i  tłoczonym logo",
+    "030": "Fotele komfortowe obszyte czarną tkaniną",
+    "033": "Fotele Icona z manualną regulacją fotela kierowcy i manualną regulacją fotela pasażera",
+    "039": "Fotele Spiga z elektryczną regulacją fotela kierowcy i manualną regulacją fotela pasażera",
+    "047": "Tkanina czarna Carbonio w połaczeniu z materiałem winylowym Scuba black",
+    "070": "Fotele obszyte tkaniną czarną z logo Biscione",
+    "071": "Fotele sportowe obszyte czarną skórą naturalną z jasnobrązowymi przeszyciami",
+    "095": "Fotele skórzane, perforowane w kolorze czarnym",
+    "423": "Fotele sportowe obszyte czarną skórą naturalną",
+    "428": "Skóra perforowana czarna z podwójnymi przeszyciami w kolorze ciemnoszarym",
+    "473": "Fotele sportowe obszyte czarną skórą naturalną",
+    "508": "Fotele skórzane, perforowane w kolorze czarnym z czerwonymi akcentami",
+    "557": "Fotele sportowe obszyte czerwoną skórą naturalną",
+    "611": "Czarna perforowana Alcantara z białym obiciami i podwójnymi przeszyciami w kolorze białym",
+    "690": "Icona: fotele podg. z tkaniny, z man. reg. 6-st. kierowcy i 4-st. pasażera, maty, nakładki na pedały",
+    "778": "Fotele sportowe skórzane czarne z ciemnoszarym obszyciem",
+    "824": "Fotele Corsa-Sabelt z elektryczną regulacją fotela kierowcy i manualną regulacją fotela pasażera",
+    "878": "Fotele Corsa-Sabelt z elektryczną regulacją fotela kierowcy i manualną regulacją fotela pasażera",
+    "890": "Fotele sportowe Sparco pokryte Alcantarą i skórą w kolorze czarnym",
+    "914": "Sportowe fotele skórzane czarne z czerwonymi obszyciami i logo na zagłówkach przednich"
+  },
+  "models": {
+    "620": "Giulia MY24",
+    "622": "Tonale",
+    "626": "Junior Ibrida",
+    "627": "Junior Elettrica",
+    "630": "Stelvio MY24",
+    "638": "TONALE IBRIDA PLUG-IN"
+  },
+  "series": {
+    "0": {
+      "code": "0",
+      "specialCode": "000"
+    },
+    "1": {
+      "code": "1",
+      "specialCode": "000"
+    },
+    "2": {
+      "code": "2",
+      "specialCode": "000"
+    },
+    "3": {
+      "code": "3",
+      "specialCode": "000"
+    },
+    "5": {
+      "code": "5",
+      "specialCode": "VEL"
+    }
+  },
+  "trims": {},
+  "versions": {
+    "1A5": {
+      "commercialCode": "Veloce",
+      "name": "VELOCE 2.0 GME 280 KM AT8 AWD"
+    },
+    "A23": {
+      "commercialCode": "Intensa",
+      "name": "Ibrida INTENSA 1.2 145 KM (107 kW) eDCT6 MHEV"
+    },
+    "A43": {
+      "commercialCode": "Intensa",
+      "name": "Ibrida Q4 INTENSA 1.2 145 KM (107 kW) eDCT6 MHEV"
+    },
+    "AA5": {
+      "commercialCode": "Intensa",
+      "name": "INTENSA 2.0 GME 280 KM AT8 AWD"
+    },
+    "AAQ": {
+      "commercialCode": "Intensa",
+      "name": "INTENSA 2.2 JTDM 210 KM AT8 AWD"
+    },
+    "AFH": {
+      "commercialCode": "Intensa",
+      "name": "INTENSA MHEV 1.5 T4 160 KM DCT7"
+    },
+    "DER": {
+      "commercialCode": "Veloce",
+      "name": "VELOCE 1.3 T4 280 KM PHEV"
+    },
+    "E23": {
+      "commercialCode": "Ibrida",
+      "name": "Ibrida 1.2 145 KM (107 kW) eDCT6 MHEV"
+    },
+    "E2E": {
+      "commercialCode": "Elettrica",
+      "name": "ELETTRICA 115 kWh 156 KM BEV"
+    },
+    "E43": {
+      "commercialCode": "Ibrida Q4",
+      "name": "Ibrida Q4 1.2 145 KM (107 kW) eDCT6 MHEV"
+    },
+    "HER": {
+      "commercialCode": "Edizione Speciale",
+      "name": "EDIZIONE SPECIALE 1.3 T4 280 KM PHEV"
+    },
+    "L23": {
+      "commercialCode": "Ibrida Speciale",
+      "name": "Ibrida SPECIALE 1.2 145 KM (107 kW) eDCT6 MHEV"
+    },
+    "L2E": {
+      "commercialCode": "Elettrica Speciale",
+      "name": "ELETTRICA SPECIALE 115 kWh 156 KM BEV"
+    },
+    "LAU": {
+      "commercialCode": "Quadrifoglio",
+      "name": "QUADRIFOGLIO SUPER SPORT 2.9 GME V6 520 KM AT8 Q4"
+    },
+    "MET": {
+      "commercialCode": "Sprint",
+      "name": "SPRINT 1.3 T4 280 KM AT6 Plug-in Hybrid"
+    },
+    "MF2": {
+      "commercialCode": "Sprint",
+      "name": "SPRINT 1.6 JTD 130 KM DCT6"
+    },
+    "MFD": {
+      "commercialCode": "Tonale",
+      "name": "TONALE 1.5 T4 175 KM DCT7 MHEV"
+    },
+    "MFG": {
+      "commercialCode": "Sprint",
+      "name": "SPRINT 1.5 T4 130 KM DCT7 Mild-Hybrid"
+    },
+    "MFH": {
+      "commercialCode": "Veloce",
+      "name": "VELOCE 1.5 T4 160 KM DCT7  Mild-Hybrid"
+    },
+    "NFD": {
+      "commercialCode": "Sport Speciale",
+      "name": "SPORT SPECIALE 1.5 T4 175 KM DCT7 MHEV"
+    },
+    "QAU": {
+      "commercialCode": "Quadrifoglio",
+      "name": "QUADRIFOGLIO 2.9 GME V6 520 KM AT8 Q4"
+    },
+    "QRU": {
+      "commercialCode": "Quadrifoglio",
+      "name": "QUADRIFOGLIO 2.9 GME V6 520 KM AT8 Q4"
+    },
+    "RER": {
+      "commercialCode": "Ti",
+      "name": "TI 1.3 T4 280 KM PHEV"
+    },
+    "S23": {
+      "commercialCode": "Sport Speciale",
+      "name": "Ibrida Sport Speciale 1.2 145 KM (107 kW) eDCT6 MHEV"
+    },
+    "TET": {
+      "commercialCode": "Tributo",
+      "name": "TRIBUTO ITALIANO 1.3 T4 280 KM AT6 Plug-in Hybrid"
+    },
+    "TFH": {
+      "commercialCode": "Tributo",
+      "name": "TRIBUTO ITALIANO 1.5 T4 160 KM DCT7  Mild-Hybrid"
+    },
+    "V2R": {
+      "commercialCode": "Elettrica 280 Veloce",
+      "name": "ELETTRICA VELOCE 207 kWh 280 KM BEV"
+    }
+  }
+}
