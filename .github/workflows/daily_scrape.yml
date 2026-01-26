@@ -2,8 +2,8 @@ name: Daily Inventory & Model Feed Update
 
 on:
   schedule:
-    - cron: '0 2 * * *'  # 3:00 rano czasu polskiego
-  workflow_dispatch:     # Pozwala uruchomić ręcznie
+    - cron: '0 1 * * *' # 02:00 AM Warsaw time (CET)
+  workflow_dispatch:
 
 jobs:
   update-feeds:
