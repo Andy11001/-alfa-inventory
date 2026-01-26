@@ -69,12 +69,12 @@ jobs:
         uses: exuanbo/actions-deploy-gist@v1
         with:
           token: ${{ secrets.GIST_TOKEN }}
-          gist_id: TODO_ENTER_ALFA_MODEL_GIST_ID
+          gist_id: 541bf43832813acb7d55ded0f686e37c
           file_path: data/alfa_model_final.csv
 
       - name: Update DS Model Feed Gist
         uses: exuanbo/actions-deploy-gist@v1
         with:
           token: ${{ secrets.GIST_TOKEN }}
-          gist_id: TODO_ENTER_DS_MODEL_GIST_ID
+          gist_id: 51716d19f2de2e7b0105659ad35dbc2b
           file_path: data/ds_model_feed.csv
