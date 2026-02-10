@@ -1,31 +1,31 @@
-vehicle_id,title,price_brutto,installment_netto,months,down_payment_pct,disclaimer,model_code
-MODEL-6981569189197107183,Alfa Romeo Giulia Veloce,259600,1155,24,20,.,620
-MODEL-7939198003287395117,Alfa Romeo Giulia Intensa,280900,1248,24,20,.,620
-MODEL-4857336073792594881,Alfa Romeo Giulia Sprint,234400,1185,24,20,. Szczegóły znajdą Państwo u Autoryzowanego Dealera Alfy Romeo. Niniejsza informacja nie stanowi oferty w rozumieniu art. 66 Kodeksu cywilnego. Zgoda na udzielenie leasingu jest uzależniona od zdolności kredytowej klienta ustalanej zgodnie z procedurami Leasingodawcy.,620
-MODEL-798610969655223612,Alfa Romeo Junior Elettrica,173200,770,25,25,.,627
-MODEL-1898119428323529296,Alfa Romeo Junior Elettrica Sprint,179600,1042,25,24,.,627
-MODEL-1801514010589814221,Alfa Romeo Junior Elettrica Ti,186000,1127,25,23,.,627
-MODEL-3562987964208193612,Alfa Romeo Junior Elettrica Sport Speciale,192400,1212,25,22,.,627
-MODEL-5954620007035599887,Alfa Romeo Junior Elettrica Veloce,215200,1513,25,20,. Szczegóły znajdą Państwo u Autoryzowanego Dealera Alfy Romeo. Niniejsza informacja nie stanowi oferty w rozumieniu art. 66 Kodeksu cywilnego. Zgoda na udzielenie leasingu jest uzależniona od zdolności kredytowej klienta ustalanej zgodnie z procedurami Leasingodawcy.,627
-MODEL-8299731884425880401,Alfa Romeo Junior Ibrida Junior,133800,896,24,20,.,626
-MODEL-7697705904239080527,Alfa Romeo Junior Ibrida Sprint,140200,937,24,20,.,626
-MODEL-644846028296499029,Alfa Romeo Junior Ibrida Q4 Sprint,153000,1021,24,20,.,626
-MODEL-7336274527182705258,Alfa Romeo Junior Ibrida Ti,146600,979,24,20,.,626
-MODEL-23208622846248212,Alfa Romeo Junior Ibrida Q4 Ti,159400,1062,24,20,.,626
-MODEL-7994303397545844068,Alfa Romeo Junior Ibrida Sport Speciale,153000,1021,24,20,.,626
-MODEL-2065796074545768281,Alfa Romeo Junior Ibrida Q4 Sport Speciale,163500,1247,24,20,. Szczegóły znajdą Państwo u Autoryzowanego Dealera Alfy Romeo. Niniejsza informacja nie stanowi oferty w rozumieniu art. 66 Kodeksu cywilnego. Zgoda na udzielenie leasingu jest uzależniona od zdolności kredytowej klienta ustalanej zgodnie z procedurami Leasingodawcy.  Szczegóły znajdą Państwo u Autoryzowanego Dealera Alfy Romeo. Niniejsza informacja nie stanowi oferty w rozumieniu art.,626
-MODEL-5621691108766923507,Alfa Romeo Stelvio Veloce,289600,1390,24,20,.,630
-MODEL-298766981664870785,Alfa Romeo Stelvio Sprint,264400,1427,24,20,.,630
-MODEL-5755638454706360470,Alfa Romeo Stelvio Intensa,310900,1489,24,20,. Szczegóły znajdą Państwo u Autoryzowanego Dealera Alfy Romeo. Niniejsza informacja nie stanowi oferty w rozumieniu art. 66 Kodeksu cywilnego. Zgoda na udzielenie leasingu jest uzależniona od zdolności kredytowej klienta ustalanej zgodnie z procedurami Leasingodawcy.,630
-MODEL-3731390943869332433,Alfa Romeo Tonale,169800,800,24,20,.,622
-MODEL-7997130360267248556,Alfa Romeo Tonale Sprint,176200,829,24,20,.,622
-MODEL-8615294400631474442,Alfa Romeo Tonale Ti,187900,771,24,20,.,622
-MODEL-3562464540398686596,Alfa Romeo Tonale Sport Speciale,196400,804,24,20,.,622
-MODEL-8068799223518692628,Alfa Romeo Tonale Veloce,199600,817,24,20,. Szczegóły znajdą Państwo u Autoryzowanego Dealera Alfy Romeo. Niniejsza informacja nie stanowi oferty w rozumieniu art. 66 Kodeksu cywilnego. Zgoda na udzielenie leasingu jest uzależniona od zdolności kredytowej klienta ustalanej zgodnie z procedurami Leasingodawcy.,622
-MODEL-7964381808085451812,Alfa Romeo Tonale PHEV Tonale,225100,1270,24,20,.,638
-MODEL-3450839372896888538,Alfa Romeo Tonale PHEV Sprint,231500,1306,24,20,.,638
-MODEL-6859526292271811869,Alfa Romeo Tonale PHEV Ti,243200,1226,24,20,.,638
-MODEL-6901430082896506125,Alfa Romeo Tonale PHEV Sport Speciale,251700,1268,24,20,.,638
-MODEL-1771243233552340926,Alfa Romeo Tonale PHEV Veloce,254900,1283,24,20,. Szczegóły znajdą Państwo u Autoryzowanego Dealera Alfy Romeo. Niniejsza informacja nie stanowi oferty w rozumieniu art. 66 Kodeksu cywilnego. Zgoda na udzielenie leasingu jest uzależniona od zdolności kredytowej klienta ustalanej zgodnie z procedurami Leasingodawcy.,638
-MODEL-343355944119863196,Alfa Romeo Giulia Rwd Quadrifoglio,503200,2411,24,20,. Szczegóły znajdą Państwo u Autoryzowanego Dealera Alfy Romeo. Niniejsza informacja nie stanowi oferty w rozumieniu art. 66 Kodeksu cywilnego. Zgoda na udzielenie leasingu jest uzależniona od zdolności kredytowej klienta ustalanej zgodnie z procedurami Leasingodawcy.,
-MODEL-5039074072465041746,Alfa Romeo Stelvio Quadrifoglio,545300,3015,24,20,. Szczegóły znajdą Państwo u Autoryzowanego Dealera Alfy Romeo. Niniejsza informacja nie stanowi oferty w rozumieniu art. 66 Kodeksu cywilnego. Zgoda na udzielenie leasingu jest uzależniona od zdolności kredytowej klienta ustalanej zgodnie z procedurami Leasingodawcy.,
+﻿vehicle_id,title,price_brutto,installment_netto,months,down_payment_pct,disclaimer,model_code
+ALFA-73FB10DBCA,Alfa Romeo Giulia Veloce,259600,1155,24,20,.,620
+ALFA-3B189A02CF,Alfa Romeo Giulia Intensa,280900,1248,24,20,.,620
+ALFA-6F438ABE26,Alfa Romeo Giulia Sprint,234400,1185,24,20,. Szczegóły znajdą Państwo u Autoryzowanego Dealera Alfy Romeo. Niniejsza informacja nie stanowi oferty w rozumieniu art. 66 Kodeksu cywilnego. Zgoda na udzielenie leasingu jest uzależniona od zdolności kredytowej klienta ustalanej zgodnie z procedurami Leasingodawcy.,620
+ALFA-676BC00D1D,Alfa Romeo Junior Elettrica,173200,770,25,25,.,627
+ALFA-F1A3946EA8,Alfa Romeo Junior Elettrica Sprint,179600,1042,25,24,.,627
+ALFA-3381E0A3B3,Alfa Romeo Junior Elettrica Ti,186000,1127,25,23,.,627
+ALFA-6ADBEB461C,Alfa Romeo Junior Elettrica Sport Speciale,192400,1212,25,22,.,627
+ALFA-AF38BCAD02,Alfa Romeo Junior Elettrica Veloce,215200,1513,25,20,. Szczegóły znajdą Państwo u Autoryzowanego Dealera Alfy Romeo. Niniejsza informacja nie stanowi oferty w rozumieniu art. 66 Kodeksu cywilnego. Zgoda na udzielenie leasingu jest uzależniona od zdolności kredytowej klienta ustalanej zgodnie z procedurami Leasingodawcy.,627
+ALFA-B548F44662,Alfa Romeo Junior Ibrida Junior,133800,896,24,20,.,626
+ALFA-DECDE6E119,Alfa Romeo Junior Ibrida Sprint,140200,937,24,20,.,626
+ALFA-544BC4FC3F,Alfa Romeo Junior Ibrida Q4 Sprint,153000,1021,24,20,.,626
+ALFA-81336ADBD5,Alfa Romeo Junior Ibrida Ti,146600,979,24,20,.,626
+ALFA-A70B621C33,Alfa Romeo Junior Ibrida Q4 Ti,159400,1062,24,20,.,626
+ALFA-530F784E93,Alfa Romeo Junior Ibrida Sport Speciale,153000,1021,24,20,.,626
+ALFA-5B0031C877,Alfa Romeo Junior Ibrida Q4 Sport Speciale,163500,1247,24,20,. Szczegóły znajdą Państwo u Autoryzowanego Dealera Alfy Romeo. Niniejsza informacja nie stanowi oferty w rozumieniu art. 66 Kodeksu cywilnego. Zgoda na udzielenie leasingu jest uzależniona od zdolności kredytowej klienta ustalanej zgodnie z procedurami Leasingodawcy.  Szczegóły znajdą Państwo u Autoryzowanego Dealera Alfy Romeo. Niniejsza informacja nie stanowi oferty w rozumieniu art.,626
+ALFA-F2B1E297B3,Alfa Romeo Stelvio Veloce,289600,1390,24,20,.,630
+ALFA-3BA6AFC6C7,Alfa Romeo Stelvio Sprint,264400,1427,24,20,.,630
+ALFA-448A630202,Alfa Romeo Stelvio Intensa,310900,1489,24,20,. Szczegóły znajdą Państwo u Autoryzowanego Dealera Alfy Romeo. Niniejsza informacja nie stanowi oferty w rozumieniu art. 66 Kodeksu cywilnego. Zgoda na udzielenie leasingu jest uzależniona od zdolności kredytowej klienta ustalanej zgodnie z procedurami Leasingodawcy.,630
+ALFA-74A6025AD9,Alfa Romeo Tonale,169800,800,24,20,.,622
+ALFA-1CF5DF02D3,Alfa Romeo Tonale Sprint,176200,829,24,20,.,622
+ALFA-A35B31DD2D,Alfa Romeo Tonale Ti,187900,771,24,20,.,622
+ALFA-25E0C78B0D,Alfa Romeo Tonale Sport Speciale,196400,804,24,20,.,622
+ALFA-6D761D489E,Alfa Romeo Tonale Veloce,199600,817,24,20,. Szczegóły znajdą Państwo u Autoryzowanego Dealera Alfy Romeo. Niniejsza informacja nie stanowi oferty w rozumieniu art. 66 Kodeksu cywilnego. Zgoda na udzielenie leasingu jest uzależniona od zdolności kredytowej klienta ustalanej zgodnie z procedurami Leasingodawcy.,622
+ALFA-777FE80766,Alfa Romeo Tonale PHEV Tonale,225100,1270,24,20,.,638
+ALFA-A3F976308F,Alfa Romeo Tonale PHEV Sprint,231500,1306,24,20,.,638
+ALFA-30FE2830FD,Alfa Romeo Tonale PHEV Ti,243200,1226,24,20,.,638
+ALFA-8F6E941DF3,Alfa Romeo Tonale PHEV Sport Speciale,251700,1268,24,20,.,638
+ALFA-A92A564B51,Alfa Romeo Tonale PHEV Veloce,254900,1283,24,20,. Szczegóły znajdą Państwo u Autoryzowanego Dealera Alfy Romeo. Niniejsza informacja nie stanowi oferty w rozumieniu art. 66 Kodeksu cywilnego. Zgoda na udzielenie leasingu jest uzależniona od zdolności kredytowej klienta ustalanej zgodnie z procedurami Leasingodawcy.,638
+ALFA-9998732713,Alfa Romeo Giulia Rwd Quadrifoglio,503200,2411,24,20,. Szczegóły znajdą Państwo u Autoryzowanego Dealera Alfy Romeo. Niniejsza informacja nie stanowi oferty w rozumieniu art. 66 Kodeksu cywilnego. Zgoda na udzielenie leasingu jest uzależniona od zdolności kredytowej klienta ustalanej zgodnie z procedurami Leasingodawcy.,
+ALFA-83F2E3CD55,Alfa Romeo Stelvio Quadrifoglio,545300,3015,24,20,. Szczegóły znajdą Państwo u Autoryzowanego Dealera Alfy Romeo. Niniejsza informacja nie stanowi oferty w rozumieniu art. 66 Kodeksu cywilnego. Zgoda na udzielenie leasingu jest uzależniona od zdolności kredytowej klienta ustalanej zgodnie z procedurami Leasingodawcy.,
