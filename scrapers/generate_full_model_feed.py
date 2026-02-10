@@ -260,6 +260,7 @@ def main():
                 "vehicle_id": f"{row['vehicle_id']}-{color_code}",
                 "title": title,
                 "description": description,
+                "rodzaj": "modelowy",
                 "make": "Alfa Romeo",
                 "model": model,
                 "year": "2025",
@@ -287,7 +288,7 @@ def main():
 
     # Zapis w nowym formacie
     fieldnames = [
-        "vehicle_id", "title", "description", "make", "model", "year", "link", "image_link", 
+        "vehicle_id", "title", "description", "rodzaj", "make", "model", "year", "link", "image_link", 
         "exterior_color", "additional_image_link", "trim", "offer_disclaimer", 
         "offer_disclaimer_url", "offer_type", "term_length", "offer_term_qualifier", 
         "amount_price", "amount_percentage", "amount_qualifier", "downpayment", 

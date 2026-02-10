@@ -310,6 +310,7 @@ def run():
             "vehicle_id": scraper_utils.generate_stable_id(item['title'], prefix="DS"),
             "title": item['title'],
             "description": description,
+            "rodzaj": "modelowy",
             "make": "DS Automobiles",
             "model": model_name,
             "year": "2025", # Default year
@@ -393,7 +394,7 @@ def run():
         
         # New Fieldnames matching Alfa Final Feed
         fieldnames = [
-            "vehicle_id", "title", "description", "make", "model", "year", "link", "image_link", 
+            "vehicle_id", "title", "description", "rodzaj", "make", "model", "year", "link", "image_link", 
             "exterior_color", "additional_image_link", "trim", "offer_disclaimer", 
             "offer_disclaimer_url", "offer_type", "term_length", "offer_term_qualifier", 
             "amount_price", "amount_percentage", "amount_qualifier", "downpayment", 
