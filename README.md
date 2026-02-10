@@ -6,8 +6,17 @@ Projekt ten służy do automatycznego pobierania, przetwarzania i udostępniania
 
 - **Pobieranie inwentarza**: Automatyczne pobieranie ofert sprzedaży samochodów z oficjalnych stron salonów.
 - **Generowanie feedów modelowych**: Tworzenie zestawień modeli wraz ze specyfikacjami i zdjęciami.
+- **Automatyczna deklinacja modeli**: Inteligentny system dobierający formę "dostępny/dostępna" w zależności od nazwy modelu (np. Alfa Romeo Giulia *dostępna*, ale DS 4 *dostępny*).
 - **Weryfikacja danych**: Sprawdzanie poprawności linków do zdjęć i innych kluczowych danych.
 - **Eksport danych**: Zapis przetworzonych danych w formacie CSV.
+
+## Automatyzacja Językowa
+
+System zawiera heurystykę (`scraper_utils.py`), która automatycznie rozpoznaje rodzaj gramatyczny nowych modeli samochodów:
+- **Marka DS**: Domyślnie traktowana jako rodzaj męski ("Ten DS" -> *dostępny*).
+- **Marka Alfa Romeo**: Zawsze traktowana jako rodzaj żeński ("Ta Alfa" -> *dostępna*). Dotyczy to wszystkich modeli (Giulia, Stelvio, Tonale, Junior, Spider itd.).
+
+Dzięki temu nowe modele (np. hipotetyczna "Alfa Romeo Milano" czy "Alfa Romeo King") będą poprawnie obsługiwane bez konieczności ręcznej aktualizacji kodu.
 
 ## Wymagania
 
@@ -20,6 +29,7 @@ Zależności Python (znajdują się w `requirements.txt`):
 - `beautifulsoup4`
 - `selenium`
 - `Pillow`
+- `python-dotenv`
 
 ## Instalacja
 
@@ -73,7 +83,7 @@ Po uruchomieniu skryptów, przetworzone pliki CSV pojawią się w katalogu `data
   - `alfa_model.py`: Generuje feed modelowy dla Alfa Romeo.
   - `ds_model.py`: Generuje feed modelowy dla DS Automobiles.
   - `validator.py`: Narzędzie do weryfikacji danych.
-  - `scraper_utils.py`: Funkcje pomocnicze (logowanie, obsługa błędów, zapis plików).
+  - `scraper_utils.py`: Funkcje pomocnicze (logowanie, obsługa błędów, zapis plików, **logika językowa**).
 - **`data/`**: Katalog, w którym zapisywane są wyniki działania skryptów (pliki CSV).
 
 ## Uwagi

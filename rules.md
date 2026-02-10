@@ -28,73 +28,50 @@ The project supports two modes of operation:
 - **Function:** Allows on-demand scraping, validation, and visual inspection of the feed.
 
 ### B. Automated (CI/CD)
-- **Schedule:** Runs daily at 2:00 UTC (3:00 PL time) via GitHub Actions (`daily_scrape.yml`).
+- **Schedule:** Runs daily at **02:00 AM Warsaw time** (01:00 UTC) via GitHub Actions (`daily_scrape.yml`).
 - **Actions:**
-  1. Sets up the environment.
-  2. Runs scrapers (`alfa_inventory.py`, `ds_inventory.py`).
-  3. Commits new data and images back to the repository.
-  4. Deploys updated CSVs to GitHub Gists for external consumption.
+  1. Sets up the environment (Python, Chrome/Selenium).
+  2. Runs scrapers (`alfa_inventory.py`, `ds_inventory.py`, `alfa_model.py`, `ds_model.py`).
+  3. Updates model feeds (`alfa_model_final.csv`, `ds_model_feed.csv`).
+  4. Commits new data and processed images back to the repository.
+  5. Deploys updated CSVs to GitHub Gists for external consumption (TikTok/Meta Catalog).
 
 ## 3. Scraping & Processing Strategy
-- **Priority:** Prefer static analysis (`requests` + `BeautifulSoup`) for speed. Use `selenium` only when necessary (e.g., DS Automobiles).
+- **Priority:** Prefer static analysis (`requests` + `BeautifulSoup`) for speed. Use `selenium` only when necessary.
+- **DS Automobiles Model Feed (Proces):**
+  1. `ds_model.py` -> Pobiera listę modeli z menu bocznym (`WlUnifiedHeader`).
+  2. **Image Selection Logic:**
+     - **Primary:** `ds_colors.json` - używa precyzyjnych renderów 3D (visuel3d) lub lokalnych plików `data/images/MODEL_COLORCODE.jpg`.
+     - **Secondary:** `ds_inventory.csv` - fallback do zdjęć z otomoto/sklepu.
+     - **Tertiary:** Domyślne miniatury ze strony głównej modelu.
+  3. `download_colors_json.py` -> Narzędzie do synchronizacji lokalnego folderu `images/` z bazą kolorów JSON.
 - **Alfa Romeo Model Feed (Proces):**
-  1. `alfa_model.py` -> **Dynamic Discovery:** Automatycznie wykrywa modele na stronie `/modele`, wchodzi na ich podstrony i ekstrahuje:
-     - Nazwy i Ceny (Regex).
-     - **Kod Modelu (MVSS):** Np. `622` (Tonale), `627` (Junior) z JSON-a `vehicleID` lub linków konfiguratora.
-  2. `fetch_live_colors.py` -> Pobiera bazę dostępnych kolorów z API JSON (SCCF). Mapuje kody kolorów na konkretne wersje silnikowe (MVSS).
-  3. `generate_full_model_feed.py` -> Główny procesor.
-     - **Inteligentne Mapowanie:** Używa wykrytego `model_code` (Krok 1) jako priorytetu, a dopiero potem słów kluczowych w tytule.
-     - **Weryfikacja:** Generuje tylko te warianty kolorystyczne, które są potwierdzone jako dostępne przez API.
-     - **Cross-Model Fallback:** W przypadku braku szablonów zdjęć dla rzadszych napędów (PHEV, Elettrica), system automatycznie "pożycza" szablony od ich odpowiedników spalinowych/hybrydowych (np. 638 -> 622), zachowując spójność wizualną.
-- **Resilience:**
-  - Scrapers **must not crash** on missing individual fields. Use `try-except` blocks.
-  - Implement fallback logic for selectors.
+  1. `alfa_model.py` -> Dynamiczne wykrywanie kodów MVSS (np. 622, 627) z JSON-a strony.
+  2. `fetch_live_colors.py` -> Pobiera bazę kolorów z API SCCF.
+  3. `generate_full_model_feed.py` -> Tworzy finalny plik na podstawie macierzy Model x Wersja x Kolor.
 - **Image Processing:**
-  - Raw images from URLs should be processed via `image_processor.py`.
-  - Standard output: 600x600px, white background, specific colored border (Alfa: RGB 181,162,152).
-  - Saved as high-quality JPEGs in `data/images/`.
+  - Standard output: 600x600px, white background.
+  - **Dynamic Borders:** Każdy kolor ma przypisany kolor ramki (np. Lazurite Blue: RGB 0,107,125) zdefiniowany w `COLOR_CONFIG`.
+  - Saved in `data/images/`.
 
 ## 4. Data Integrity & Output
-- **Format:** 
-  - Main feeds: **CSV** (`csv.DictWriter`).
-  - Auxiliary data/mappings: **JSON** (e.g., `alfa_colors.json`).
-- **Location:** `data/` directory (absolute paths).
-- **Critical Columns (CSV):**
-  - `vehicle_id`: MUST be unique.
-  - `amount_price`: Leasing rate (netto/brutto) or full price.
-  - `image_link`: Can be a remote URL or a local path (relative to repo root if committed).
-- **Validation:** 
-  - Use `scrapers/validator.py` to check file health.
-
-## 5. Code Style
-- **Language:** Python 3.10+
-- **Paths:** Always use `os.path.join` and `os.path.dirname(__file__)` for portability.
-- **Dependencies:** Managed in `requirements.txt`.
-- **Logging:** Use `print()` for CLI feedback (emojis allowed: 🕷️, ✅, ❌) which is captured by the Dashboard console.
-- **Git:** Ensure `data/` changes (CSVs and images) are strictly managed to avoid repo bloat (though current workflow commits them).
-
-## 6. Maintenance
-- **Refactoring:** When updating selectors, verify against the live website.
-- **Gist Secrets:** Deployment requires `GIST_TOKEN` in GitHub Secrets.
+- **Format:** CSV (DictWriter).
+- **Critical Links:**
+  - **Alfa Romeo Gist:** `https://gist.githubusercontent.com/Andy11001/541bf43832813acb7d55ded0f686e37c/raw/alfa_model_final.csv`
+  - **DS Automobiles Gist:** `https://gist.githubusercontent.com/Andy11001/51716d19f2de2e7b0105659ad35dbc2b/raw/ds_model_feed.csv`
 
 ---
 
 ## 7. Session Handoff & Status (2026-01-26)
 
-**Context:** Maintenance & Monitoring.
+**Context:** Full Automation & Image Accuracy Fix.
 
 ### ✅ Completed (Wdrożone):
-1.  **DS Automobiles Full Pipeline:**
-    - **Dynamic Discovery:** `scrapers/ds_model.py` automatycznie wykrywa modele (DS 3, DS 4, DS 7, DS 9, N°4, N°8) i ich ceny.
-    - **Color Extraction:** `scrapers/extract_ds_colors.py` i `scrapers/finalize_ds_colors.py` pobierają palety kolorów i mapują je na wersje.
-    - **Image Processing:** `scrapers/download_ds_images.py` pobiera i przetwarza zdjęcia w wysokiej jakości.
-    - **Feed Generation:** Finalne pliki `ds_model_feed.csv` oraz `ds_model_colors_complete.csv` są generowane poprawnie.
-    - **Dashboard:** Pełna integracja w `dashboard.py` oraz `templates/index.html`.
-2.  **Alfa Romeo Feed Automation:**
-    - **Auto-Discovery:** `alfa_model.py` sam wykrywa listę modeli ze strony głównej.
-    - **MVSS Extraction:** Automatyczne pobieranie kodów technicznych (np. 622) z JSON-a strony, co eliminuje zgadywanie.
-    - Stabilny proces generowania `alfa_model_final.csv` z wykorzystaniem wykrytych kodów.
+1.  **Gist Automation:** Pełna synchronizacja feedów modelowych z Gistami poprzez GitHub Actions.
+2.  **Image Accuracy Fix (DS):** Naprawiono problem błędnych zdjęć dla wariantów kolorystycznych (np. Cashmere, Lazurite Blue). Teraz system używa specyficznych plików `.jpg` zintegrowanych z `ds_colors.json`.
+3.  **Schedule:** Ustawiono odświeżanie na 02:00 czasu polskiego (idealnie pod katalogi reklamowe).
+4.  **GitHub CLI:** Zintegrowano `gh` do zarządzania gistami.
 
 ### 🚀 Next Steps (Plany):
-1.  **Monitoring:** Obserwacja działania skryptów w cyklu dobowym (GitHub Actions).
-2.  **Maintenance:** Reagowanie na ewentualne zmiany w strukturze stron źródłowych (selektory CSS/API).
+1.  **Validation:** Monitorowanie poprawności linków w TikToku po pierwszej nocnej aktualizacji.
+2.  **Performance:** Optymalizacja pobierania obrazów (pobieranie tylko nowych kodów kolorów).

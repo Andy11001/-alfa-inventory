@@ -4,6 +4,7 @@ import os
 import re
 
 # Pliki wejściowe
+import scraper_utils
 FEED_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "alfa_model_feed.csv")
 IMAGES_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "alfa_configurator_images.csv")
 CODES_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "alfa_codes.json")
@@ -251,10 +252,14 @@ def main():
         for color_code, color_name in colors_to_process:
             final_url = build_url(template_params, color_code, new_mvss=mvss)
             
+            # Generowanie description
+            description = scraper_utils.format_model_description(title, amount_price_str)
+
             # Mapowanie na nowy schemat TikToka
             new_row = {
                 "vehicle_id": f"{row['vehicle_id']}-{color_code}",
                 "title": title,
+                "description": description,
                 "make": "Alfa Romeo",
                 "model": model,
                 "year": "2025",
@@ -282,7 +287,7 @@ def main():
 
     # Zapis w nowym formacie
     fieldnames = [
-        "vehicle_id", "title", "make", "model", "year", "link", "image_link", 
+        "vehicle_id", "title", "description", "make", "model", "year", "link", "image_link", 
         "exterior_color", "additional_image_link", "trim", "offer_disclaimer", 
         "offer_disclaimer_url", "offer_type", "term_length", "offer_term_qualifier", 
         "amount_price", "amount_percentage", "amount_qualifier", "downpayment", 

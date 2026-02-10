@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import re
 import csv
 import os
+import scraper_utils # Import modułu bezpieczeństwa
 import json
 import collections
 from urllib.parse import urljoin
@@ -79,7 +80,7 @@ def get_menu_structure(session):
     models_list = []
     
     try:
-        r = session.get(RANGE_URL, timeout=15)
+        r = scraper_utils.fetch_with_retry(session, RANGE_URL, timeout=15)
         if r.status_code != 200:
             print(f"❌ Błąd HTTP: {r.status_code}")
             return []
@@ -138,7 +139,7 @@ def get_menu_structure(session):
 def get_price_from_page(url, session):
     """Wchodzi na stronę modelu i pobiera cenę/ratę oraz pełny disclaimer z popupu."""
     try:
-        r = session.get(url, timeout=10)
+        r = scraper_utils.fetch_with_retry(session, url, timeout=10)
         if r.status_code != 200: return 0, 0, ""
         
         soup = BeautifulSoup(r.text, 'html.parser')
@@ -151,7 +152,7 @@ def get_price_from_page(url, session):
                 page_url = props.get("pageUrl")
                 if page_url and "legal-mentions" in page_url:
                     full_legal_url = urljoin(BASE_URL, page_url)
-                    lr = session.get(full_legal_url, timeout=5)
+                    lr = scraper_utils.fetch_with_retry(session, full_legal_url, timeout=5)
                     full_legal = BeautifulSoup(lr.text, 'html.parser').get_text(" ", strip=True)
                     break
             except: pass
@@ -161,7 +162,7 @@ def get_price_from_page(url, session):
             if match:
                 try:
                     full_legal_url = urljoin(BASE_URL, match.group(1))
-                    lr = session.get(full_legal_url, timeout=5)
+                    lr = scraper_utils.fetch_with_retry(session, full_legal_url, timeout=5)
                     full_legal = BeautifulSoup(lr.text, 'html.parser').get_text(" ", strip=True)
                 except: pass
 
@@ -301,10 +302,14 @@ def run():
         downpayment_val = int(price * 0.10) if price else 0
         downpayment_str = f"{downpayment_val} PLN" if downpayment_val else ""
 
+        # Generowanie description
+        description = scraper_utils.format_model_description(item['title'], amount_price_str)
+
         # Base record with new schema
         base_record = {
-            "vehicle_id": f"DS-MODEL-{abs(hash(item['title']))}",
+            "vehicle_id": scraper_utils.generate_stable_id(item['title'], prefix="DS"),
             "title": item['title'],
+            "description": description,
             "make": "DS Automobiles",
             "model": model_name,
             "year": "2025", # Default year
@@ -358,7 +363,8 @@ def run():
                 record = base_record.copy()
                 record["exterior_color"] = color_name
                 record["image_link"] = img_url
-                record["vehicle_id"] = f"{base_record['vehicle_id']}-{abs(hash(color_name))}"
+                color_suffix = scraper_utils.generate_stable_id(color_name, length=6)
+                record["vehicle_id"] = f"{base_record['vehicle_id']}-{color_suffix}"
                 final_data.append(record)
 
         else:
@@ -370,7 +376,8 @@ def run():
                     record = base_record.copy()
                     record["exterior_color"] = color_name
                     record["image_link"] = color_img or item['image_url']
-                    record["vehicle_id"] = f"{base_record['vehicle_id']}-{abs(hash(color_name))}"
+                    color_suffix = scraper_utils.generate_stable_id(color_name, length=6)
+                    record["vehicle_id"] = f"{base_record['vehicle_id']}-{color_suffix}"
                     final_data.append(record)
             else:
                 # 3. Last resort: Default
@@ -386,7 +393,7 @@ def run():
         
         # New Fieldnames matching Alfa Final Feed
         fieldnames = [
-            "vehicle_id", "title", "make", "model", "year", "link", "image_link", 
+            "vehicle_id", "title", "description", "make", "model", "year", "link", "image_link", 
             "exterior_color", "additional_image_link", "trim", "offer_disclaimer", 
             "offer_disclaimer_url", "offer_type", "term_length", "offer_term_qualifier", 
             "amount_price", "amount_percentage", "amount_qualifier", "downpayment", 
@@ -394,14 +401,15 @@ def run():
             "emission_overlay_disclaimer", "emission_image_link"
         ]
         
-        with open(OUTPUT_FILE, 'w', encoding='utf-8', newline='') as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            writer.writeheader()
-            for row in final_data:
-                # Ensure row has all fields
-                row_to_write = {k: row.get(k, "") for k in fieldnames}
-                writer.writerow(row_to_write)
-        print(f"✅ Zapisano {len(final_data)} ofert do {OUTPUT_FILE} (Schema zgodna z Alfa Final)")
+        # Bezpieczny zapis z scraper_utils
+        from scraper_utils import safe_save_csv
+        # Przygotowanie danych w formacie listy słowników
+        data_to_save = [{k: row.get(k, "") for k in fieldnames} for row in final_data]
+        
+        if safe_save_csv(data_to_save, fieldnames, OUTPUT_FILE, min_rows_threshold=1):
+            print(f"✅ Zapisano {len(final_data)} ofert do {OUTPUT_FILE} (Schema zgodna z Alfa Final)")
+        else:
+            print(f"⚠️ Nie udało się zapisać pliku {OUTPUT_FILE}")
 
 if __name__ == "__main__":
     run()

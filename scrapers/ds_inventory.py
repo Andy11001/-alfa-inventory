@@ -4,6 +4,7 @@ import json
 import re
 import time
 import os
+import scraper_utils # Import modułu bezpieczeństwa
 from bs4 import BeautifulSoup
 try:
     from scrapers.image_processor import process_image
@@ -85,7 +86,8 @@ def parse_detail_page(url, session):
     lat, lon = "", ""
     
     try:
-        r = session.get(url, timeout=10)
+        # Użycie bezpiecznego pobeirania
+        r = scraper_utils.fetch_with_retry(session, url, timeout=10)
         html_content = r.text
         soup = BeautifulSoup(r.content, 'html.parser')
         
@@ -169,7 +171,8 @@ def main():
 
     while True:
         try:
-            r = session.get(f"{API_URL}?per_page=100&page={page}", timeout=10)
+            # Użycie fetch_with_retry do bezpiecznego pobierania stron
+            r = scraper_utils.fetch_with_retry(session, f"{API_URL}?per_page=100&page={page}", timeout=10)
             if r.status_code != 200:
                 break
             data = r.json()
@@ -179,7 +182,7 @@ def main():
             print(f"Pobrano stronę {page} ({len(data)} aut)...")
             page += 1
         except Exception as e:
-            print(f"Błąd API: {e}")
+            print(f"Błąd API przy stronie {page}: {e}")
             break
 
     print(f"Łącznie znaleziono {len(all_products)} ofert. Pobieranie szczegółów...")
@@ -320,15 +323,19 @@ def main():
         }
         processed_rows.append(row)
 
-    print(f"\nZapisano {len(processed_rows)} ofert.")
+    print(f"\nGenerowanie feedu z {len(processed_rows)} ofertami...")
     
     # Czyszczenie starych zdjęć
     current_vins = [r['vehicle_id'] for r in processed_rows]
     cleanup_images(current_vins)
     
-    with open(OUTPUT_FILE, 'w', newline='', encoding='utf-8-sig') as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction='ignore')
-        writer.writeheader()
-        writer.writerows(processed_rows)
+    # Bezpieczny zapis z scraper_utils
+    from scraper_utils import safe_save_csv
+    success = safe_save_csv(processed_rows, fieldnames, OUTPUT_FILE)
+    
+    if success:
+        print(f"Sukces! Dane zapisane w: {OUTPUT_FILE}")
+    else:
+        print(f"BŁĄD KRYTYCZNY: Nie udało się zapisać {OUTPUT_FILE}")
 
 if __name__ == "__main__": main()

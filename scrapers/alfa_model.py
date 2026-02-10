@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import re
 import csv
 import os
+import scraper_utils # Import modułu bezpieczeństwa
 
 # Konfiguracja
 BASE_URL = "https://www.alfaromeo.pl"
@@ -17,7 +18,7 @@ def get_dynamic_model_urls(session):
     found_urls = set()
     
     try:
-        r = session.get(hub_url, timeout=15)
+        r = scraper_utils.fetch_with_retry(session, hub_url, timeout=15)
         soup = BeautifulSoup(r.text, 'html.parser')
         
         # Heurystyka: Szukamy linków zawierających '/modele/' ale nie będących samym hubem
@@ -122,7 +123,7 @@ def extract_offers_from_text(text, model_code=""):
             raw_disclaimer = raw_disclaimer.rsplit(".", 1)[0] + "."
         
         offer = {
-            "vehicle_id": f"MODEL-{abs(hash(full_title))}",
+            "vehicle_id": scraper_utils.generate_stable_id(full_title, prefix="ALFA"),
             "title": full_title,
             "price_brutto": clean_price(match.group("price")),
             "installment_netto": clean_price(match.group("installment")),
@@ -148,7 +149,7 @@ def main():
     for url in target_urls:
         print(f"➡️ Analiza: {url}")
         try:
-            r = session.get(url, timeout=15)
+            r = scraper_utils.fetch_with_retry(session, url, timeout=15)
             if r.status_code == 200:
                 html_text = r.text
                 
@@ -174,11 +175,14 @@ def main():
     if all_found_offers:
         # Dodajemy 'model_code' do nagłówków
         fieldnames = ["vehicle_id", "title", "price_brutto", "installment_netto", "months", "down_payment_pct", "disclaimer", "model_code"]
-        with open(OUTPUT_FILE, 'w', newline='', encoding='utf-8') as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerows(all_found_offers)
-        print(f"\n💾 Zapisano {len(all_found_offers)} ofert do pliku pośredniego.")
+        
+        # Bezpieczny zapis z scraper_utils
+        from scraper_utils import safe_save_csv
+        if safe_save_csv(all_found_offers, fieldnames, OUTPUT_FILE, min_rows_threshold=1):
+             print(f"\n💾 Zapisano {len(all_found_offers)} ofert do pliku pośredniego.")
+        else:
+             print(f"\n⚠️ Nie udało się zapisać pliku {OUTPUT_FILE}")
+             return # Przerywamy, nie generujemy feedu finalnego na starych/pustych danych
         
         # Trigger generation of the final feed
         try:

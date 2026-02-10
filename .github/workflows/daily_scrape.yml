@@ -1,8 +1,10 @@
 name: Daily Inventory & Model Feed Update
 
 on:
+  push:
+    branches: [ "master" ]
   schedule:
-    - cron: '0 1 * * *' # 02:00 AM Warsaw time (CET)
+    - cron: '0 */4 * * *' # Every 4 hours
   workflow_dispatch:
 
 jobs:
@@ -20,23 +22,39 @@ jobs:
           python-version: '3.10'
 
       - name: Install dependencies
-        run: pip install requests beautifulsoup4 pandas selenium Pillow
+        run: pip install requests beautifulsoup4 pandas selenium Pillow python-dotenv
 
       - name: Create data and images directories
         run: mkdir -p data/images
 
       # --- INVENTORY SCRAPERS ---
       - name: Run Alfa Romeo Inventory Scraper
+        env:
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
         run: PYTHONPATH=. python scrapers/alfa_inventory.py
 
       - name: Run DS Automobiles Inventory Scraper
+        env:
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
         run: PYTHONPATH=. python scrapers/ds_inventory.py
 
       # --- MODEL FEED SCRAPERS ---
       - name: Run Alfa Romeo Model Feed (Auto-Discovery)
+        env:
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
         run: PYTHONPATH=. python scrapers/alfa_model.py
 
       - name: Run DS Automobiles Model Feed (Dynamic)
+        env:
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
         run: PYTHONPATH=. python scrapers/ds_model.py
 
       # --- COMMIT CHANGES ---

@@ -5,6 +5,7 @@ import re
 import time
 import os
 from datetime import datetime
+import scraper_utils # Import modułu pomocniczego
 
 # Konfiguracja
 API_URL = "https://salon.alfaromeo.pl/api/offers/list-alfa-romeo.json"
@@ -39,13 +40,15 @@ def main():
     print(f"Pobieranie listy z {API_URL}...")
     all_offers = []
     try:
-        r = requests.get(API_URL, headers={"User-Agent": "Mozilla/5.0"})
+        # Użycie fetch_with_retry zamiast zwykłego requesta
+        r = scraper_utils.fetch_with_retry(requests, API_URL, headers={"User-Agent": "Mozilla/5.0"})
         data = r.json()
         count = data['result']['info']['countOfResults']
         per_page = data['result']['info']['offersPerPage']
         total_pages = (count + per_page - 1) // per_page
         for page in range(1, total_pages + 1):
-            d = requests.get(f"{API_URL}?page={page}", headers={"User-Agent": "Mozilla/5.0"}).json()
+            # Tutaj też retry na paginacji
+            d = scraper_utils.fetch_with_retry(requests, f"{API_URL}?page={page}", headers={"User-Agent": "Mozilla/5.0"}).json()
             all_offers.extend(d['result']['list'])
     except Exception as e:
         print(f"Błąd pobierania listy: {e}")
@@ -174,11 +177,15 @@ def main():
         processed_rows.append(row)
 
     print(f"\nZapisywanie {len(processed_rows)} unikalnych ofert...")
-    unique_rows = {r['vehicle_id']: r for r in processed_rows}.values()
-    with open(OUTPUT_FILE, 'w', newline='', encoding='utf-8-sig') as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction='ignore')
-        writer.writeheader()
-        writer.writerows(unique_rows)
-    print(f"Zakończono. Plik: {OUTPUT_FILE}")
+    unique_rows = list({r['vehicle_id']: r for r in processed_rows}.values()) # Konwersja na listę
+    
+    # Użycie bezpiecznego zapisu z scraper_utils
+    from scraper_utils import safe_save_csv
+    success = safe_save_csv(unique_rows, fieldnames, OUTPUT_FILE)
+    
+    if success:
+        print(f"Zakończono sukcesem. Plik: {OUTPUT_FILE}")
+    else:
+        print(f"BŁĄD: Nie udało się zapisać pliku {OUTPUT_FILE}")
 
 if __name__ == "__main__": main()

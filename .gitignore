@@ -6,3 +6,6 @@ check_*.py
 debug_landing.png
 .DS_Store
 .vscode/
+
+# Security
+.env
