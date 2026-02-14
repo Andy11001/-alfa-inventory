@@ -14,6 +14,7 @@ RANGE_URL = "https://www.dsautomobiles.pl/gama-ds.html"
 OUTPUT_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "ds_model_feed.csv")
 COLORS_JSON_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "ds_colors.json")
 IMAGES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "images")
+HISTORY_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "ds_stock_colors_history.json")
 GITHUB_REPO_URL = "https://raw.githubusercontent.com/Andy11001/-alfa-inventory/master/data/images/"
 
 def clean_title(title):
@@ -39,6 +40,24 @@ def load_colors_json():
     except Exception as e:
         print(f"❌ Błąd ładowania ds_colors.json: {e}")
         return {}
+
+def load_stock_history():
+    if not os.path.exists(HISTORY_FILE):
+        return {}
+    try:
+        with open(HISTORY_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"❌ Błąd ładowania historii stocku: {e}")
+        return {}
+
+def save_stock_history(history):
+    try:
+        with open(HISTORY_FILE, 'w', encoding='utf-8') as f:
+            json.dump(history, f, indent=4, ensure_ascii=False)
+        print("✅ Zapisano historię kolorów stockowych.")
+    except Exception as e:
+        print(f"❌ Błąd zapisu historii stocku: {e}")
 
 def normalize_model_name_for_filename(model_name):
     """
@@ -257,10 +276,27 @@ def run():
     # 1. Pobierz modele z menu
     menu_models = get_menu_structure(session)
     
-    # 2. Load colors DB
+    # 2. Load colors DB & Inventory History
     colors_db = load_colors_json()
-    inventory_colors = load_inventory_colors()
-    print(f"🎨 Załadowano bazę kolorów (DB: {len(colors_db)} modeli, Inv: {len(inventory_colors)})")
+    inventory_colors_current = load_inventory_colors()
+    stock_history = load_stock_history()
+
+    # Merge current inventory into history
+    for model_key, colors_map in inventory_colors_current.items():
+        if model_key not in stock_history:
+            stock_history[model_key] = {}
+        
+        for color_name, img_url in colors_map.items():
+            # Update or add
+            stock_history[model_key][color_name] = img_url
+
+    # Save updated history
+    save_stock_history(stock_history)
+
+    # Use stock_history for fallback (it now contains current inventory + past colors)
+    inventory_colors = stock_history
+
+    print(f"🎨 Załadowano bazę kolorów (DB: {len(colors_db)} modeli, Hist: {len(stock_history)})")
 
     final_data = []
     seen = set()
