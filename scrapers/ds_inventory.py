@@ -114,11 +114,21 @@ def parse_detail_page(url, session):
         
         # --- 2. Dealer / Lokalizacja / Rok ---
         text_content = soup.get_text(" ", strip=True)
-        detected_city = "Warszawa"
-        for city in DEALER_LOCATIONS.keys():
-            if city in text_content:
-                detected_city = city
-                break
+        detected_city = "Warszawa" # Default fallback
+
+        # Try to extract city from dataLayer (more reliable)
+        city_match = re.search(r'"edealerCity"\s*:\s*"([^"]+)"', html_content)
+        if city_match and city_match.group(1):
+            detected_city = city_match.group(1)
+        else:
+            # Fallback to edealerName if city is empty
+            name_match = re.search(r'"edealerName"\s*:\s*"([^"]+)"', html_content)
+            if name_match:
+                dealer_name = name_match.group(1).upper()
+                for city in DEALER_LOCATIONS.keys():
+                    if city.upper() in dealer_name:
+                        detected_city = city
+                        break
         
         # Set Address Data
         dealer_data = DEALER_LOCATIONS.get(detected_city, DEALER_LOCATIONS["Warszawa"])
