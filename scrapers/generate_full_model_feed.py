@@ -252,13 +252,14 @@ def main():
         for color_code, color_name in colors_to_process:
             final_url = build_url(template_params, color_code, new_mvss=mvss)
             
-            # Generowanie description
+            # Generowanie description & title
             description = scraper_utils.format_model_description(title, amount_price_str)
+            tiktok_title = scraper_utils.format_model_title(title, amount_price_str)
 
             # Mapowanie na nowy schemat TikToka
             new_row = {
                 "vehicle_id": f"{row['vehicle_id']}-{color_code}",
-                "title": title,
+                "title": tiktok_title,
                 "description": description,
                 "rodzaj": "modelowy",
                 "make": "Alfa Romeo",

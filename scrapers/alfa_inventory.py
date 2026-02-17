@@ -144,14 +144,14 @@ def main():
         trans = "Manual" if "Manual" in eng else "Automatic"
         drive = "AWD" if any(x in version or x in model or x in eng for x in ["Q4", "Na cztery"]) else "FWD"
 
-        # Opis
-        desc = f"{installment_desc}. " if installment_desc else ""
-        desc += f"Alfa Romeo {full_model_name}. Lokalizacja: {street}, {city}."
+        # TikTok-optimized title & description
+        tiktok_title = scraper_utils.format_inventory_title(model, version, installment)
+        tiktok_desc = scraper_utils.format_inventory_description("Alfa Romeo", model, version, installment, city)
 
         row = {
             "vehicle_id": uid,
-            "title": full_model_name[:40],
-            "description": desc[:500].strip(),
+            "title": tiktok_title,
+            "description": tiktok_desc,
             "link": f"{BASE_URL}/{uid}",
             "image_link": offer.get("image"),
             "make": "Alfa Romeo",

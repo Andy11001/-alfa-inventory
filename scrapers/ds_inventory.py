@@ -329,12 +329,15 @@ def main():
             clean_path = os.path.join(IMAGES_DIR, clean_filename)
             process_image(original_image_url, clean_path, add_border=False)
 
-        desc = f"{desc_api[:450]}"
+        # TikTok-optimized title & description
+        # TikTok-optimized title & description
+        tiktok_title = scraper_utils.format_inventory_title(model, trim, clean_installment)
+        tiktok_desc = scraper_utils.format_inventory_description("DS Automobiles", model, trim, clean_installment)
 
         row = {
             "vehicle_id": vin,
-            "title": f"{model} {trim}"[:40],
-            "description": desc.strip(),
+            "title": tiktok_title,
+            "description": tiktok_desc,
             "link": link,
             "image_link": image,
             "make": "DS Automobiles",
@@ -370,8 +373,7 @@ def main():
     cleanup_images(current_vins)
     
     # Bezpieczny zapis z scraper_utils
-    from scraper_utils import safe_save_csv
-    success = safe_save_csv(processed_rows, fieldnames, OUTPUT_FILE)
+    success = scraper_utils.safe_save_csv(processed_rows, fieldnames, OUTPUT_FILE)
     
     if success:
         print(f"Sukces! Dane zapisane w: {OUTPUT_FILE}")

@@ -338,13 +338,14 @@ def run():
         downpayment_val = int(price * 0.10) if price else 0
         downpayment_str = f"{downpayment_val} PLN" if downpayment_val else ""
 
-        # Generowanie description
+        # Generowanie description & title
         description = scraper_utils.format_model_description(item['title'], amount_price_str)
+        tiktok_title = scraper_utils.format_model_title(item['title'], amount_price_str)
 
         # Base record with new schema
         base_record = {
             "vehicle_id": scraper_utils.generate_stable_id(item['title'], prefix="DS"),
-            "title": item['title'],
+            "title": tiktok_title,
             "description": description,
             "rodzaj": "modelowy",
             "make": "DS Automobiles",
