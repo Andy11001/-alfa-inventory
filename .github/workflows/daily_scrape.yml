@@ -24,6 +24,11 @@ jobs:
       - name: Install dependencies
         run: pip install requests beautifulsoup4 pandas selenium Pillow python-dotenv
 
+      - name: Set up Chrome for Selenium
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
       - name: Create data and images directories
         run: mkdir -p data/images
 
