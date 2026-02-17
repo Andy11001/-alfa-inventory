@@ -315,13 +315,19 @@ def main():
         if image:
             image_filename = f"{vin}.jpg"
             local_image_path = os.path.join(IMAGES_DIR, image_filename)
+            original_image_url = image  # Save original URL before overwriting
             
             # Pobierz kolor z konfiguracji lub użyj domyślnego beżu
             border_rgb = COLOR_CONFIG.get(color, (181, 162, 152))
             
-            if process_image(image, local_image_path, border_color_rgb=border_rgb):
+            if process_image(original_image_url, local_image_path, border_color_rgb=border_rgb):
                 # Zmieniamy link na bezpośredni link do GitHuba
                 image = f"{GITHUB_BASE_IMAGE_URL}/{image_filename}"
+            
+            # Also save borderless copy for model feed usage
+            clean_filename = f"{vin}_clean.jpg"
+            clean_path = os.path.join(IMAGES_DIR, clean_filename)
+            process_image(original_image_url, clean_path, add_border=False)
 
         desc = f"{desc_api[:450]}"
 

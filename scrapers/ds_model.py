@@ -412,7 +412,9 @@ def run():
                 for color_name, color_img in inv_colors.items():
                     record = base_record.copy()
                     record["exterior_color"] = color_name
-                    record["image_link"] = color_img or item['image_url']
+                    # Use borderless (_clean) version for model feed
+                    clean_img = color_img.replace('.jpg', '_clean.jpg') if color_img and '.jpg' in color_img else color_img
+                    record["image_link"] = clean_img or item['image_url']
                     color_suffix = scraper_utils.generate_stable_id(color_name, length=6)
                     record["vehicle_id"] = f"{base_record['vehicle_id']}-{color_suffix}"
                     final_data.append(record)
