@@ -9,3 +9,10 @@ debug_landing.png
 
 # Security
 .env
+
+# Temp/debug files
+archive/
+temp_*.html
+debug_*.py
+debug_*.html
+*.bak

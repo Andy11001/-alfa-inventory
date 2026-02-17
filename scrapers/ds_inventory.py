@@ -196,6 +196,18 @@ def main():
             break
 
     print(f"Łącznie znaleziono {len(all_products)} ofert. Pobieranie szczegółów...")
+    
+    # Init Selenium Driver for B2B prices
+    try:
+        try:
+            from scrapers.selenium_helper import init_driver, get_b2b_price_selenium
+        except ImportError:
+            from selenium_helper import init_driver, get_b2b_price_selenium
+        driver = init_driver()
+        print("Selenium driver initialized.")
+    except Exception as e:
+        print(f"Failed to init Selenium: {e}")
+        driver = None
 
     fieldnames = [
         "vehicle_id", "title", "description", "link", "image_link",
@@ -212,6 +224,7 @@ def main():
             print(f"Przetwarzanie {i}/{len(all_products)}...", end='\r')
 
         pid = str(product.get("id"))
+
         link = product.get("link")
         title_raw = product.get("title", {}).get("rendered", "")
         vin = title_raw if len(title_raw) == 17 else f"DS-{pid}"
@@ -255,21 +268,28 @@ def main():
         # --- Detailed Parsing ---
         full_price, address_text, year, lat, lon = parse_detail_page(link, session)
 
-        # --- Leasing / Monthly Price ---
-        # Try to find "od XXX zł" in description
+        # --- Leasing / Monthly Price (B2B ONLY) ---
         desc_api = product.get("yoast_head_json", {}).get("description", "")
         installment = ""
-        rate_match = re.search(r'od\s*(\d[\d\s]+)\s*z\ł', desc_api)
-        if rate_match:
-             installment = rate_match.group(1).replace(" ", "")
 
-        # Only process if we have a monthly price (leasing offer)
-        # OR if we have a full price. But per user logic, we filter for leasing.
-        # Let's be permissive: if we have EITHER, we keep it.
-        
+        # B2B price via Selenium — NEVER use B2C
+        if driver:
+            try:
+                b2b_price = get_b2b_price_selenium(link, driver=driver)
+                if b2b_price:
+                    installment = b2b_price
+                    print(f"  [{i}] {vin}: B2B rata = {b2b_price} PLN")
+                else:
+                    print(f"  [{i}] {vin}: Brak raty B2B — pomijam")
+            except Exception as e:
+                print(f"  [{i}] {vin}: Błąd Selenium: {e}")
+        else:
+            print(f"  [{i}] {vin}: Brak drivera Selenium — pomijam")
+
+        # Check for valid installment
         clean_installment = installment.replace("PLN", "").replace(" ", "").strip()
         
-        # FILTR: Pomiń jeśli brak raty lub rata = 0
+        # FILTR: Pomiń jeśli brak raty B2B
         if not clean_installment:
             continue
         try:
@@ -335,6 +355,10 @@ def main():
 
     print(f"\nGenerowanie feedu z {len(processed_rows)} ofertami...")
     
+    if driver:
+        driver.quit()
+        print("Selenium driver closed.")
+
     # Czyszczenie starych zdjęć
     current_vins = [r['vehicle_id'] for r in processed_rows]
     cleanup_images(current_vins)
