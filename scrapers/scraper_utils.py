@@ -40,12 +40,12 @@ def get_availability_word(model_name):
 def format_model_description(title, price_str):
     """
     Tworzy opis modelu zoptymalizowany pod TikTok Automotive Ads.
-    Format: "Nowy {Title} · Rata od {Price} netto/mies. · Leasing B2B · Sprawdź ofertę!"
+    Format: "{Title} · Rata od {Price} netto/mies. · Leasing B2B · Sprawdź ofertę!"
     """
     if price_str:
-        return f"Nowy {title} · Rata od {price_str} netto/mies. · Leasing B2B · Sprawdź ofertę!"
+        return f"{title} · Rata od {price_str} netto/mies. · Leasing B2B · Sprawdź ofertę!"
     else:
-        return f"Nowy {title} · Leasing B2B · Sprawdź ofertę!"
+        return f"{title} · Leasing B2B · Sprawdź ofertę!"
 
 def format_model_title(title, price_str):
     """
@@ -69,10 +69,10 @@ def format_inventory_title(model, trim, installment):
 def format_inventory_description(make, model, trim, installment, city=""):
     """
     Tworzy opis oferty stockowej zoptymalizowany pod TikTok Automotive Ads.
-    Format: "Nowy {Make} {Model} {Trim} · Rata od {rata} PLN netto/mies. · Leasing B2B · {City} · Sprawdź!"
+    Format: "{Make} {Model} {Trim} · Rata od {rata} PLN netto/mies. · Leasing B2B · {City} · Sprawdź!"
     """
     full_name = f"{make} {model} {trim}".strip()
-    parts = [f"Nowy {full_name}"]
+    parts = [full_name]
     if installment:
         parts.append(f"Rata od {installment} PLN netto/mies.")
     parts.append("Leasing B2B")
