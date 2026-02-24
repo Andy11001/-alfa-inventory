@@ -47,6 +47,13 @@ jobs:
           EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
         run: PYTHONPATH=. python scrapers/ds_inventory.py
 
+      - name: Run Opel Inventory Scraper
+        env:
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
+        run: PYTHONPATH=. python scrapers/opel_inventory.py
+
       # --- MODEL FEED SCRAPERS ---
       - name: Run Alfa Romeo Model Feed (Auto-Discovery)
         env:
@@ -61,6 +68,13 @@ jobs:
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
           EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
         run: PYTHONPATH=. python scrapers/ds_model.py
+
+      - name: Run Opel Model Feeds (Dynamic)
+        env:
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
+        run: PYTHONPATH=. python scrapers/opel_model.py
 
       # --- COMMIT CHANGES ---
       - name: Commit and push changes (including images)
@@ -101,3 +115,32 @@ jobs:
           token: ${{ secrets.GIST_TOKEN }}
           gist_id: 51716d19f2de2e7b0105659ad35dbc2b
           file_path: data/ds_model_feed.csv
+
+      # --- DEPLOY GISTS (Opel) ---
+      - name: Update Opel Osobowe Inventory Gist
+        uses: exuanbo/actions-deploy-gist@v1
+        with:
+          token: ${{ secrets.GIST_TOKEN }}
+          gist_id: bf5934e64991721baf8b702cdcccca86
+          file_path: data/opel_osobowe_inventory.csv
+
+      - name: Update Opel Dostawcze Inventory Gist
+        uses: exuanbo/actions-deploy-gist@v1
+        with:
+          token: ${{ secrets.GIST_TOKEN }}
+          gist_id: 77f561bd4c7c7952463adafa61d06e07
+          file_path: data/opel_dostawcze_inventory.csv
+
+      - name: Update Opel Osobowe Model Gist
+        uses: exuanbo/actions-deploy-gist@v1
+        with:
+          token: ${{ secrets.GIST_TOKEN }}
+          gist_id: 3618bbec9270c9d102793149a782bafb
+          file_path: data/opel_osobowe_model.csv
+
+      - name: Update Opel Dostawcze Model Gist
+        uses: exuanbo/actions-deploy-gist@v1
+        with:
+          token: ${{ secrets.GIST_TOKEN }}
+          gist_id: 35be887668ab468d30fb5791fb4f2922
+          file_path: data/opel_dostawcze_model.csv
