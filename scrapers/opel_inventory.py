@@ -203,15 +203,23 @@ def main():
 
     while True:
         try:
-            r = scraper_utils.fetch_with_retry(session, f"{API_URL}?per_page=100&page={page}", timeout=10)
-            if r.status_code != 200: break
+            # Użycie bezpośredniego żądania, aby HTTP 400 nie triggerowało powtórek na końcu wyników
+            url = f"{API_URL}?per_page=100&page={page}"
+            r = session.get(url, timeout=15)
+            
+            if r.status_code == 400:
+                print(f"Koniec wyników (HTTP 400 na stronie {page}).")
+                break
+                
+            r.raise_for_status()
             data = r.json()
-            if not data: break
+            if not data:
+                break
             all_products.extend(data)
             print(f"Pobrano stronę {page} ({len(data)} aut)...")
             page += 1
         except Exception as e:
-            print(f"Błąd API: {e}")
+            print(f"Błąd pobierania / Koniec wyników przy stronie {page}: {e}")
             break
 
     total = len(all_products[:100])
