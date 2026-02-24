@@ -222,7 +222,7 @@ def main():
             print(f"Błąd pobierania / Koniec wyników przy stronie {page}: {e}")
             break
 
-    total = len(all_products[:100])
+    total = len(all_products)
     print(f"Łącznie znaleziono {len(all_products)} ofert, procesuję {total} ofert Opla. Pobieranie szczegółów (wielowątkowo)...")
 
     osobowe_rows = []
@@ -231,7 +231,7 @@ def main():
     MAX_WORKERS = 6
     
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        futures = {executor.submit(process_product, p, i+1, total): p for i, p in enumerate(all_products[:100])}
+        futures = {executor.submit(process_product, p, i+1, total): p for i, p in enumerate(all_products)}
         
         for future in as_completed(futures):
             try:
