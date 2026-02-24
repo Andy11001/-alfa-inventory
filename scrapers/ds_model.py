@@ -93,7 +93,7 @@ def get_image_from_db(model_name, color_data):
 def get_menu_structure(session):
     """
     Parsuje komponent WlUnifiedHeader ze strony gamy, aby uzyskać 
-    oficjalną listę modeli i ich obrazki z menu.
+    oficjalną listę modeli i ich obrazki z menu poprzez JSON w data-props.
     """
     print(f"🔍 Pobieranie struktury menu z: {RANGE_URL}")
     models_list = []
@@ -112,35 +112,52 @@ def get_menu_structure(session):
             print("❌ Nie znaleziono komponentu WlUnifiedHeader")
             return []
 
-        # Parsowanie HTML wewnątrz znacznika, bo jest SSR (Server Side Rendered)
-        # To jest klucz do sukcesu - linki są w HTMLu wewnątrz diva data-props
+        # W nowej wersji dane są w atrybucie data-props jako JSON
+        props_str = header.get("data-props")
+        if not props_str:
+            print("❌ Komponent WlUnifiedHeader nie zawiera data-props")
+            return []
+            
+        try:
+            props = json.loads(props_str)
+        except json.JSONDecodeError:
+            print("❌ Błąd parsowania JSON z data-props")
+            return []
+            
+        # Szukamy menu z modelami w hamburgermenu->menu
+        menu_items = props.get("hamburgermenu", {}).get("menu", [])
+        model_menu = None
+        for m in menu_items:
+            if m.get("name") == "whitelabelmodelmenu":
+                model_menu = m
+                break
+                
+        if not model_menu:
+            print("❌ Nie znaleziono 'whitelabelmodelmenu' w strukturze JSON")
+            return []
+
+        # Interesuje nas lista subModelTagMapping
+        sub_models = model_menu.get("subModelTagMapping", [])
         
-        # Szukamy kart modeli w wyrenderowanym HTML
-        model_cards = header.find_all(class_="wl-header__model-card")
+        # Oraz główne modele jako awaryjne fallbacki, jeśli subModele nie wystarczą
+        # Niektóre mogą być w modelTagMapping
+        # Często główne modele mogą nie mieć prosto zdefiniowanych linków do konkretnych silników
         
-        for card in model_cards:
-            href = card.get('href')
+        for sm in sub_models:
+            href = sm.get("link", {}).get("href", "")
             if not href or href == "#": continue
             
             full_url = urljoin(BASE_URL, href)
             
             # Tytuł
-            title_div = card.find(class_="wl-header__model-card-title")
-            title = title_div.get_text(strip=True) if title_div else "DS Model"
+            title = sm.get("image", {}).get("alt", "")
+            if not title:
+                title = sm.get("name", "")
+            
             title = clean_title(title)
             
             # Obrazek
-            img_tag = card.find("img")
-            img_src = img_tag.get("src") if img_tag else ""
-            # Jeśli src jest puste, sprawdźmy srcset lub source
-            if not img_src and img_tag and img_tag.get("srcset"):
-                img_src = img_tag.get("srcset").split(" ")[0]
-            
-            if not img_src:
-                source = card.find("source")
-                if source and source.get("srcset"):
-                    img_src = source.get("srcset").split(" ")[0]
-
+            img_src = sm.get("image", {}).get("desktopImg", "")
             full_img_url = urljoin(BASE_URL, img_src) if img_src else ""
 
             models_list.append({
@@ -148,6 +165,12 @@ def get_menu_structure(session):
                 "url": full_url,
                 "image_url": full_img_url
             })
+            
+        # Unikalne modele wg URL (JSON czasem ma duplikaty ścieżek z różnymi filterQueries)
+        unique_models = {}
+        for m in models_list:
+            unique_models[m["url"]] = m
+        models_list = list(unique_models.values())
 
     except Exception as e:
         print(f"❌ Błąd parsowania menu: {e}")
@@ -268,6 +291,127 @@ def match_inventory_colors(model_title, color_map):
             
     return {}
 
+# ─────────────────────────────────────────────
+# NOWE: Integracja z API configv3 (jak w Oplu)
+# ─────────────────────────────────────────────
+API_BASE = "https://api-cdn.configv3.awsmpsa.com/api/v4/d-pl-pl-btoc/vehicles"
+
+ENERGY_MAP = {
+    "01": "Hybrid",
+    "02": "Gasoline",
+    "03": "Diesel",
+    "04": "Electric",
+    "12": "Plug-in Hybrid"
+}
+
+def fetch_all_derived_models():
+    """Pobiera listę wszystkich modeli (derivedModels) z API DS."""
+    url = f"{API_BASE}/derivedModels"
+    try:
+        r = requests.get(url, timeout=10)
+        if r.status_code == 200:
+            return r.json()
+    except Exception as e:
+        print(f"Błąd łączenia z API: {e}")
+    return []
+
+def fetch_api_versions(model_id):
+    """Pobiera warianty (versions) z API dla danego ID modelu."""
+    url = f"{API_BASE}/versions?derivedModel={model_id}"
+    try:
+        r = requests.get(url, timeout=15)
+        if r.status_code == 200:
+            return r.json()
+    except Exception as e:
+        print(f"Błąd przy pobieraniu wariantów dla {model_id}: {e}")
+    return []
+
+def extract_model_data_from_api(versions):
+    """
+    Extract structured trim/color/engine data from API versions list for DS.
+    Returns dict: { trim_name: { "engines": [...], "colors": [...] } }
+    """
+    trims = {}
+    for v in versions:
+        trim_label = v.get("grCommercialName", {}).get("label", "Standard")
+        energy_id = v.get("energy", {}).get("id", "02")
+        fuel_type = ENERGY_MAP.get(energy_id, "Gasoline")
+        engine_label = v.get("grEngine", {}).get("label", "")
+
+        if "hybrid" in engine_label.lower() and fuel_type == "Gasoline":
+            fuel_type = "Hybrid"
+        transmission = v.get("grTransmissionType", {}).get("label", "")
+        # API price may exist but we prioritize menu scraping over it
+        api_price = float(v.get("prices", {}).get("price", {}).get("base", "0"))
+
+        body_style = v.get("bodyStyle", {}).get("label", "")
+        lcdv = v.get("lcdv", "")
+
+        colors = []
+        looks = v.get("globalFeatures", {}).get("looks", {}).get("categories", [])
+        
+        has_rims = any(cat.get("id") == "rims" for cat in looks)
+        interior_id = ""
+        rim_id = ""
+        
+        # Grab first default interior and rim to build a valid complete CFGAP3D visual URL
+        for cat in looks:
+            if cat.get("id") == "interiors" and not interior_id:
+                feats = cat.get("features", [])
+                if feats: interior_id = feats[0].get("id", "")
+            elif cat.get("id") == "rims" and not rim_id:
+                feats = cat.get("features", [])
+                if feats: rim_id = feats[0].get("id", "")
+
+        for cat in looks:
+            if cat.get("id") == "exteriors":
+                for feat in cat.get("features", []):
+                    color_name = feat.get("label", "")
+                    color_id = feat.get("id", "")
+                    swatch_url = feat.get("visuals", {}).get("default", "")
+
+                    if color_name and lcdv and color_id:
+                        if has_rims:
+                            # Full car 3D render URL for DS (requires trim and opt for CFGAP3D)
+                            trim_param = f"&trim={interior_id}" if interior_id else ""
+                            opt_param = f"&opt1={rim_id}" if rim_id else ""
+                            
+                            img_url = (
+                                f"https://visuel3d-secure.citroen.com/V3DImage.ashx"
+                                f"?client=CFGAP3D&mkt=PL&env=PROD&version={lcdv}"
+                                f"&ratio=1&format=jpg&quality=90&width=1280"
+                                f"&view=001&color={color_id}{trim_param}{opt_param}&back=0"
+                            )
+                        else:
+                            img_url = swatch_url if swatch_url else ""
+                            
+                        if img_url:
+                            colors.append({"name": color_name, "image": img_url})
+
+        if trim_label not in trims:
+            trims[trim_label] = {"engines": [], "colors": []}
+
+        engine_key = f"{fuel_type}|{engine_label}|{transmission}"
+        existing_keys = [f"{e['fuel_type']}|{e['engine']}|{e['transmission']}" for e in trims[trim_label]["engines"]]
+        if engine_key not in existing_keys:
+            trims[trim_label]["engines"].append({
+                "fuel_type": fuel_type,
+                "engine": engine_label,
+                "transmission": transmission,
+                "api_price": api_price,
+                "body_style": body_style,
+            })
+
+        existing_colors = {c["name"] for c in trims[trim_label]["colors"]}
+        for c in colors:
+            if c["name"] not in existing_colors:
+                trims[trim_label]["colors"].append(c)
+                existing_colors.add(c["name"])
+
+    return trims
+
+
+
 def run():
     print("🕷️ Rozpoczynam pobieranie (Menu -> Modele)...")
     session = requests.Session()
@@ -276,27 +420,19 @@ def run():
     # 1. Pobierz modele z menu
     menu_models = get_menu_structure(session)
     
-    # 2. Load colors DB & Inventory History
-    colors_db = load_colors_json()
-    inventory_colors_current = load_inventory_colors()
-    stock_history = load_stock_history()
+    print("📦 Pobieranie listy modeli z API dsautomobiles...")
+    api_models = fetch_all_derived_models()
+    if not api_models:
+        print("❌ Nie udało się pobrać modeli z API. Przerwanie.")
+        return
 
-    # Merge current inventory into history
-    for model_key, colors_map in inventory_colors_current.items():
-        if model_key not in stock_history:
-            stock_history[model_key] = {}
-        
-        for color_name, img_url in colors_map.items():
-            # Update or add
-            stock_history[model_key][color_name] = img_url
-
-    # Save updated history
-    save_stock_history(stock_history)
-
-    # Use stock_history for fallback (it now contains current inventory + past colors)
-    inventory_colors = stock_history
-
-    print(f"🎨 Załadowano bazę kolorów (DB: {len(colors_db)} modeli, Hist: {len(stock_history)})")
+    # Słownik do szybkiego szukania modeli w API { "DS4": model_id }
+    api_models_map = {}
+    for m in api_models:
+        label = m.get("label", "").upper().replace(" ", "")
+        if label == "N°4": label = "DSN4"
+        elif label == "N°8": label = "DSN8"
+        api_models_map[label] = m.get("id")
 
     final_data = []
     seen = set()
@@ -306,126 +442,142 @@ def run():
         if url in seen: continue
         seen.add(url)
         
-        print(f"➡️ Przetwarzanie: {item['title']} ({url})")
+        print(f"\n➡️ Przetwarzanie: {item['title']} ({url})")
         price, installment, disclaimer = get_price_from_page(url, session)
         
         # Skip if no price and no installment
         if price == 0 and installment == 0:
             print(f"   ⚠️ Pominięto {item['title']} - brak ceny i raty.")
             continue
-            
-        # Determine Trim / Model from Title
-        title_upper = item['title'].upper()
-        model_name = item['title'] # Default
-        trim_name = "Standard"
-        
-        # List of known base models to extract
-        known_models = ["DS N°4", "DS N°8", "DS 3", "DS 4", "DS 7", "DS 9", "DS N4"]
-        for km in known_models:
-            if km in title_upper:
-                match_index = title_upper.find(km)
-                if match_index != -1:
-                    model_name = km
-                    remainder = title_upper[match_index + len(km):].strip()
-                    if remainder:
-                        trim_name = remainder.title()
-                    break
-        
-        # Calculate Amount Price (Rata) string
-        amount_price_str = f"{installment} PLN" if installment else ""
-        
-        # Calculate Downpayment (Wpłata)
-        downpayment_val = int(price * 0.10) if price else 0
-        downpayment_str = f"{downpayment_val} PLN" if downpayment_val else ""
 
-        # Generowanie description & title
-        description = scraper_utils.format_model_description(item['title'], amount_price_str)
-        tiktok_title = scraper_utils.format_model_title(item['title'], amount_price_str)
-
-        # Base record with new schema
-        base_record = {
-            "vehicle_id": scraper_utils.generate_stable_id(item['title'], prefix="DS"),
-            "title": tiktok_title,
-            "description": description,
-            "rodzaj": "modelowy",
-            "make": "DS Automobiles",
-            "model": model_name,
-            "year": "2025", # Default year
-            "link": url,
-            # "image_link": populated below
-            # "exterior_color": populated below
-            "additional_image_link": "",
-            "trim": trim_name,
-            "offer_disclaimer": disclaimer,
-            "offer_disclaimer_url": url,
-            "offer_type": "LEASE",
-            "term_length": "24", # Default months
-            "offer_term_qualifier": "months",
-            "amount_price": amount_price_str,
-            "amount_percentage": "",
-            "amount_qualifier": "per month",
-            "downpayment": downpayment_str,
-            "downpayment_qualifier": "due at signing",
-            "emission_disclaimer": "",
-            "emission_disclaimer_url": "",
-            "emission_overlay_disclaimer": "",
-            "emission_image_link": ""
-        }
-
-        # 1. Try to get colors from DB (ds_colors.json)
-        # Match keys in colors_db with current item['title']
-        db_colors = []
-        found_in_db = False
+        # Dopasowanie do API (menu zwraca np. "DS 4 E-TENSE", API ma bazowe "DS 4")
+        # Zmieniamy N° na N by ułatwić szukanie
+        menu_title_upper = item['title'].upper().replace(" ", "").replace("N°", "N")
         
-        # Try exact match first
-        if item['title'] in colors_db:
-             db_colors = colors_db[item['title']]
-             found_in_db = True
-        else:
-            # Try fuzzy match
-            norm_title = item['title'].upper().replace(" ", "")
-            for db_key, variants in colors_db.items():
-                if db_key.upper().replace(" ", "") in norm_title:
-                    db_colors = variants
-                    found_in_db = True
-                    break
+        # Determine base model for API lookup
+        known_base_models = ["DSN4", "DSN8", "DS3", "DS4", "DS7", "DS9"]
+        matched_api_id = None
+        base_model_label = item['title']
         
-        if found_in_db and db_colors:
-             print(f"   🎨 Znaleziono {len(db_colors)} kolorów w DB dla {item['title']}")
-             for variant in db_colors:
-                color_name = variant.get("color_name")
-                img_url = get_image_from_db(item['title'], variant)
+        for kbm in known_base_models:
+            # W przypadku modeli zaczynających się od DSN (np. DSN4), 
+            # menu_title_upper może mieć tylko 'N4' po usunięciu spacji i zamianie 'N°'.
+            alt_match = kbm.replace("DSN", "N") if kbm.startswith("DSN") else kbm
+            if kbm in menu_title_upper or alt_match in menu_title_upper:
+                matched_api_id = api_models_map.get(kbm)
+                # Odtwarzamy przybliżoną nazwę bazy jeśli brak
+                if kbm == "DSN4": base_model_label = "DS N°4"
+                elif kbm == "DSN8": base_model_label = "DS N°8"
+                elif kbm == "DS3": base_model_label = "DS 3"
+                elif kbm == "DS4": base_model_label = "DS 4"
+                elif kbm == "DS7": base_model_label = "DS 7"
+                elif kbm == "DS9": base_model_label = "DS 9"
+                break
                 
-                if not color_name or not img_url: continue
+        if not matched_api_id:
+            print(f"   ⚠️ Nie dopasowano '{item['title']}' do żadnego modelu API. Pomijam warianty zaawansowane.")
+            continue
+            
+        print(f"   🛠️ Pobieranie wariantów API dla bazowego {base_model_label} ({matched_api_id})...")
+        versions = fetch_api_versions(matched_api_id)
+        if not versions:
+            print("   ⚠️ Brak wersji w API.")
+            continue
+            
+        trims_data = extract_model_data_from_api(versions)
+        trim_count = len(trims_data)
+        engine_count = sum(len(t["engines"]) for t in trims_data.values())
+        color_count = sum(len(t["colors"]) for t in trims_data.values())
+        print(f"   ✅ API: {trim_count} trimów, {engine_count} silników, {color_count} kolorów")
+        
+        # Generowanie permutacji dla Feed'a (Ceny promocyjne "od" są te same dla modelu, warianty zdjęć/nazw się zmieniają)
+        for trim_name, data in trims_data.items():
+            engines_to_use = data["engines"]
+            
+            # Jeśli nazwa z menu jasno wskazuje na paliwo, spróbujmy odfiltrować silniki
+            menu_hints_electric = ["E-TENSE", "ELECTRIC", "ELEKTRYCZNY", "ELEKTRYCZNA"]
+            menu_hints_phev = ["PLUG-IN"]
+            menu_hints_hybrid = ["HYBRID", "HYBRYDOWY"]
+            menu_hints_diesel = ["DIESEL", "BLUEHDI"]
+            
+            is_electric = any(h in menu_title_upper for h in menu_hints_electric) and not any(h in menu_title_upper for h in menu_hints_phev)
+            is_phev = any(h in menu_title_upper for h in menu_hints_phev)
+            is_hybrid = any(h in menu_title_upper for h in menu_hints_hybrid)
+            is_diesel = any(h in menu_title_upper for h in menu_hints_diesel)
+            
+            # Odfiltrujmy silniki w API pasujące do tej podstrony
+            filtered_engines = []
+            for eng in engines_to_use:
+                ft = eng["fuel_type"].upper()
+                if is_electric and "ELECTRIC" in ft: filtered_engines.append(eng)
+                elif is_phev and "PLUG-IN" in ft: filtered_engines.append(eng)
+                elif is_hybrid and "HYBRID" in ft and "PLUG" not in ft: filtered_engines.append(eng)
+                elif is_diesel and "DIESEL" in ft: filtered_engines.append(eng)
+                elif not (is_electric or is_phev or is_hybrid or is_diesel):
+                    # Podstrona ogólna (np. wprowadzająca / spalinowa)
+                    if "GASOLINE" in ft or "DIESEL" in ft: filtered_engines.append(eng)
+            
+            # Fallback - jak przefiltrowało za mocno, bierzemy wszystkie
+            if not filtered_engines:
+                filtered_engines = engines_to_use
+                
+            for eng in filtered_engines:
+                fuel_hint = eng["fuel_type"]
+                engine_name = eng["engine"]
+                
+                # Ustawiamy ratę z menu (z konfiguracji wskaźnikowej "od")
+                amount_price_str = f"{installment} PLN" if installment else ""
+                downpayment_val = int(price * 0.10) if price else 0
+                downpayment_str = f"{downpayment_val} PLN" if downpayment_val else ""
 
-                record = base_record.copy()
-                record["exterior_color"] = color_name
-                record["image_link"] = img_url
-                color_suffix = scraper_utils.generate_stable_id(color_name, length=6)
-                record["vehicle_id"] = f"{base_record['vehicle_id']}-{color_suffix}"
-                final_data.append(record)
-
-        else:
-            # 2. Fallback to Inventory
-            inv_colors = match_inventory_colors(item['title'], inventory_colors)
-            if inv_colors:
-                print(f"   🎨 Znaleziono {len(inv_colors)} kolorów w Inventory dla {item['title']}")
-                for color_name, color_img in inv_colors.items():
-                    record = base_record.copy()
-                    record["exterior_color"] = color_name
-                    # Use borderless (_clean) version for model feed
-                    clean_img = color_img.replace('.jpg', '_clean.jpg') if color_img and '.jpg' in color_img else color_img
-                    record["image_link"] = clean_img or item['image_url']
-                    color_suffix = scraper_utils.generate_stable_id(color_name, length=6)
-                    record["vehicle_id"] = f"{base_record['vehicle_id']}-{color_suffix}"
-                    final_data.append(record)
-            else:
-                # 3. Last resort: Default
-                print(f"   ⚠️ Brak kolorów dla {item['title']}, używam domyślnego.")
-                record = base_record.copy()
-                record["exterior_color"] = "Standard"
-                record["image_link"] = item['image_url']
-                final_data.append(record)
+                # Generowanie description & title dla tej konkretnej wersji (uwzględniając Trim i Silnik)
+                # Tytuł: DS 4 E-TENSE Etoile Hybrid 136 · Rata od 1085 PLN netto/mies.
+                full_model_title = f"{item['title']} {trim_name} {fuel_hint}"
+                if fuel_hint.upper() in item['title'].upper():
+                    full_model_title = f"{item['title']} {trim_name}"
+                    
+                description = scraper_utils.format_model_description(full_model_title, amount_price_str)
+                tiktok_title = scraper_utils.format_model_title(full_model_title, amount_price_str)
+                
+                base_record = {
+                    "vehicle_id": scraper_utils.generate_stable_id(f"{item['title']}-{trim_name}-{fuel_hint}", prefix="DS"),
+                    "title": tiktok_title,
+                    "description": description,
+                    "rodzaj": "modelowy",
+                    "make": "DS Automobiles",
+                    "model": base_model_label,
+                    "year": "2025", 
+                    "link": url,
+                    "trim": trim_name,
+                    "offer_disclaimer": disclaimer,
+                    "offer_disclaimer_url": url,
+                    "offer_type": "LEASE",
+                    "term_length": "24",
+                    "offer_term_qualifier": "months",
+                    "amount_price": amount_price_str,
+                    "amount_qualifier": "per month",
+                    "downpayment": downpayment_str,
+                    "downpayment_qualifier": "due at signing",
+                    "emission_disclaimer": "",
+                    "emission_disclaimer_url": "",
+                    "emission_overlay_disclaimer": "",
+                    "emission_image_link": ""
+                }
+                
+                if not data["colors"]:
+                    # Fallback obrazka
+                    base_record["exterior_color"] = "Standard"
+                    base_record["image_link"] = item['image_url']
+                    final_data.append(base_record)
+                else:
+                    for color in data["colors"]:
+                        record = base_record.copy()
+                        record["exterior_color"] = color["name"]
+                        record["image_link"] = color["image"]
+                        color_suffix = scraper_utils.generate_stable_id(color["name"], length=6)
+                        record["vehicle_id"] = f"{base_record['vehicle_id']}-{color_suffix}"
+                        
+                        final_data.append(record)
 
     # Zapis
     if final_data:
