@@ -4,7 +4,8 @@ import json
 import re
 import time
 import os
-import scraper_utils # Import modułu bezpieczeństwa
+import scraper_utils
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from bs4 import BeautifulSoup
 try:
     from scrapers.image_processor import process_image
@@ -172,6 +173,140 @@ def cleanup_images(current_vins):
     if removed_count > 0:
         print(f"Usunięto {removed_count} nieaktualnych zdjęć.")
 
+def process_product(product, index, total_count):
+    try:
+        from scrapers.selenium_helper import init_driver, get_b2b_price_selenium
+    except ImportError:
+        from selenium_helper import init_driver, get_b2b_price_selenium
+
+    local_session = requests.Session()
+    local_session.headers.update({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"})
+    
+    pid = str(product.get("id"))
+    link = product.get("link")
+    title_raw = product.get("title", {}).get("rendered", "")
+    vin = title_raw if len(title_raw) == 17 else f"DS-{pid}"
+    
+    classes = product.get("class_list", {})
+    
+    model = "DS Unknown"
+    for cls in classes.values():
+        if cls.startswith("product_cat-") and cls.replace("product_cat-", "") in MODEL_MAP:
+            model = MODEL_MAP[cls.replace("product_cat-", "")]
+    
+    if model == "DS Unknown":
+        if "ds-7" in link: model = "DS 7"
+        elif "ds-3" in link: model = "DS 3"
+        elif "ds-4" in link: model = "DS 4"
+        elif "/n4/" in link: model = "N°4"
+        elif "ds-9" in link: model = "DS 9"
+        elif "/n8/" in link: model = "N°8"
+
+    color = "Standard"
+    fuel = "Gasoline"
+    trans = "Automatic"
+    drive = "FWD"
+    trim = ""
+    
+    for cls in classes.values():
+        if cls.startswith("pa_kolor-"):
+            color = cls.replace("pa_kolor-", "").replace("-", " ").title()
+        elif cls.startswith("pa_typ-paliwa-"):
+            f_val = cls.replace("pa_typ-paliwa-", "")
+            if "hybryda" in f_val: fuel = "Hybrid"
+            elif "elektryczny" in f_val: fuel = "Electric"
+            elif "diesel" in f_val: fuel = "Diesel"
+        elif cls.startswith("pa_typ-skrzyni-"):
+            if "manual" in cls: trans = "Manual"
+        elif cls.startswith("pa_poziom-wyposazenia-"):
+            trim = cls.replace("pa_poziom-wyposazenia-", "").replace("-", " ").title()
+
+    full_price, address_text, year, lat, lon = parse_detail_page(link, local_session)
+
+    installment = ""
+    driver = None
+    try:
+        driver = init_driver()
+        b2b_price = get_b2b_price_selenium(link, driver=driver)
+        if b2b_price:
+            installment = b2b_price
+            print(f"  [{index}/{total_count}] {vin}: B2B rata = {b2b_price} PLN")
+        else:
+            print(f"  [{index}/{total_count}] {vin}: Brak raty B2B — pomijam")
+    except Exception as e:
+        print(f"  [{index}/{total_count}] {vin}: Błąd Selenium: {e}")
+    finally:
+        if driver:
+            try: driver.quit()
+            except: pass
+
+    clean_installment = installment.replace("PLN", "").replace(" ", "").strip()
+    
+    if not clean_installment:
+        return None
+    try:
+        if int(clean_installment) <= 0:
+            return None
+    except ValueError:
+        return None
+
+    if not full_price:
+        full_price = "200000 PLN"
+
+    amount_price_final = f"{clean_installment} PLN"
+
+    image = ""
+    if "og_image" in product.get("yoast_head_json", {}):
+        imgs = product.get("yoast_head_json")["og_image"]
+        if imgs:
+            image = imgs[0].get("url")
+
+    if image:
+        image_filename = f"{vin}.jpg"
+        local_image_path = os.path.join(IMAGES_DIR, image_filename)
+        original_image_url = image
+        border_rgb = COLOR_CONFIG.get(color, (181, 162, 152))
+        
+        try:
+            if process_image(original_image_url, local_image_path, border_color_rgb=border_rgb):
+                image = f"{GITHUB_BASE_IMAGE_URL}/{image_filename}"
+            clean_filename = f"{vin}_clean.jpg"
+            clean_path = os.path.join(IMAGES_DIR, clean_filename)
+            process_image(original_image_url, clean_path, add_border=False)
+        except Exception as e:
+            print(f"Błąd renderingu zdjęcia {vin}: {e}")
+
+    tiktok_title = scraper_utils.format_inventory_title(model, trim, clean_installment)
+    tiktok_desc = scraper_utils.format_inventory_description("DS Automobiles", model, trim, clean_installment)
+
+    row = {
+        "vehicle_id": vin,
+        "title": tiktok_title,
+        "description": tiktok_desc,
+        "link": link,
+        "image_link": image,
+        "make": "DS Automobiles",
+        "model": model,
+        "year": year,
+        "mileage.value": 0,
+        "mileage.unit": "KM",
+        "body_style": "SUV" if "7" in model or "3" in model else "Hatchback",
+        "exterior_color": color,
+        "state_of_vehicle": "New",
+        "price": full_price,
+        "currency": "PLN",
+        "address": address_text,
+        "latitude": lat,
+        "longitude": lon,
+        "offer_type": "LEASE",
+        "amount_price": amount_price_final,
+        "amount_qualifier": "per month",
+        "fuel_type": fuel,
+        "transmission": trans,
+        "drivetrain": drive
+    }
+    return row
+
 def main():
     print("Pobieranie listy pojazdów z API sklepu DS...")
     all_products = []
@@ -181,7 +316,6 @@ def main():
 
     while True:
         try:
-            # Użycie bezpośredniego żądania, aby HTTP 400 nie triggerowało mechanizmu ponawiania (End of pagination)
             url = f"{API_URL}?per_page=100&page={page}"
             r = session.get(url, timeout=15)
             
@@ -200,19 +334,21 @@ def main():
             print(f"Błąd pobierania / Koniec wyników przy stronie {page}: {e}")
             break
 
-    print(f"Łącznie znaleziono {len(all_products)} ofert. Pobieranie szczegółów...")
+    total = len(all_products)
+    print(f"Łącznie znaleziono {total} ofert. Pobieranie szczegółów (wielowątkowo)...")
+
+    processed_rows = []
+    MAX_WORKERS = 15
     
-    # Init Selenium Driver for B2B prices
-    try:
-        try:
-            from scrapers.selenium_helper import init_driver, get_b2b_price_selenium
-        except ImportError:
-            from selenium_helper import init_driver, get_b2b_price_selenium
-        driver = init_driver()
-        print("Selenium driver initialized.")
-    except Exception as e:
-        print(f"Failed to init Selenium: {e}")
-        driver = None
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        futures = {executor.submit(process_product, p, i+1, total): p for i, p in enumerate(all_products)}
+        for future in as_completed(futures):
+            try:
+                res = future.result()
+                if res:
+                    processed_rows.append(res)
+            except Exception as e:
+                print(f"Błąd wątku DS: {e}")
 
     fieldnames = [
         "vehicle_id", "title", "description", "link", "image_link",
@@ -222,162 +358,11 @@ def main():
         "offer_type", "amount_price", "amount_qualifier", "fuel_type", "transmission", "drivetrain"
     ]
 
-    processed_rows = []
-
-    for i, product in enumerate(all_products, 1):
-        if i % 5 == 0:
-            print(f"Przetwarzanie {i}/{len(all_products)}...", end='\r')
-
-        pid = str(product.get("id"))
-
-        link = product.get("link")
-        title_raw = product.get("title", {}).get("rendered", "")
-        vin = title_raw if len(title_raw) == 17 else f"DS-{pid}"
-        
-        # --- Basic Data from API ---
-        classes = product.get("class_list", {})
-        
-        model = "DS Unknown"
-        for cls in classes.values():
-            if cls.startswith("product_cat-") and cls.replace("product_cat-", "") in MODEL_MAP:
-                model = MODEL_MAP[cls.replace("product_cat-", "")]
-        
-        # Fallback model from link
-        if model == "DS Unknown":
-            if "ds-7" in link: model = "DS 7"
-            elif "ds-3" in link: model = "DS 3"
-            elif "ds-4" in link: model = "DS 4"
-            elif "/n4/" in link: model = "N°4"
-            elif "ds-9" in link: model = "DS 9"
-            elif "/n8/" in link: model = "N°8"
-
-        color = "Standard"
-        fuel = "Gasoline"
-        trans = "Automatic"
-        drive = "FWD"
-        trim = ""
-        
-        for cls in classes.values():
-            if cls.startswith("pa_kolor-"):
-                color = cls.replace("pa_kolor-", "").replace("-", " ").title()
-            elif cls.startswith("pa_typ-paliwa-"):
-                f_val = cls.replace("pa_typ-paliwa-", "")
-                if "hybryda" in f_val: fuel = "Hybrid"
-                elif "elektryczny" in f_val: fuel = "Electric"
-                elif "diesel" in f_val: fuel = "Diesel"
-            elif cls.startswith("pa_typ-skrzyni-"):
-                if "manual" in cls: trans = "Manual"
-            elif cls.startswith("pa_poziom-wyposazenia-"):
-                trim = cls.replace("pa_poziom-wyposazenia-", "").replace("-", " ").title()
-
-        # --- Detailed Parsing ---
-        full_price, address_text, year, lat, lon = parse_detail_page(link, session)
-
-        # --- Leasing / Monthly Price (B2B ONLY) ---
-        desc_api = product.get("yoast_head_json", {}).get("description", "")
-        installment = ""
-
-        # B2B price via Selenium — NEVER use B2C
-        if driver:
-            try:
-                b2b_price = get_b2b_price_selenium(link, driver=driver)
-                if b2b_price:
-                    installment = b2b_price
-                    print(f"  [{i}] {vin}: B2B rata = {b2b_price} PLN")
-                else:
-                    print(f"  [{i}] {vin}: Brak raty B2B — pomijam")
-            except Exception as e:
-                print(f"  [{i}] {vin}: Błąd Selenium: {e}")
-        else:
-            print(f"  [{i}] {vin}: Brak drivera Selenium — pomijam")
-
-        # Check for valid installment
-        clean_installment = installment.replace("PLN", "").replace(" ", "").strip()
-        
-        # FILTR: Pomiń jeśli brak raty B2B
-        if not clean_installment:
-            continue
-        try:
-            if int(clean_installment) <= 0:
-                continue
-        except ValueError:
-            continue
-
-        # TikTok wymaga pola 'price'. Jeśli go nie znaleziono na stronie,
-        # ale mamy ratę (co sprawdziliśmy wyżej), ustawiamy placeholder.
-        if not full_price:
-            full_price = "200000 PLN"
-
-        amount_price_final = f"{clean_installment} PLN"
-
-        image = ""
-        if "og_image" in product.get("yoast_head_json", {}):
-            imgs = product.get("yoast_head_json")["og_image"]
-            if imgs:
-                image = imgs[0].get("url")
-
-        # --- Image Processing (Resize + Dynamic Color Border) ---
-        if image:
-            image_filename = f"{vin}.jpg"
-            local_image_path = os.path.join(IMAGES_DIR, image_filename)
-            original_image_url = image  # Save original URL before overwriting
-            
-            # Pobierz kolor z konfiguracji lub użyj domyślnego beżu
-            border_rgb = COLOR_CONFIG.get(color, (181, 162, 152))
-            
-            if process_image(original_image_url, local_image_path, border_color_rgb=border_rgb):
-                # Zmieniamy link na bezpośredni link do GitHuba
-                image = f"{GITHUB_BASE_IMAGE_URL}/{image_filename}"
-            
-            # Also save borderless copy for model feed usage
-            clean_filename = f"{vin}_clean.jpg"
-            clean_path = os.path.join(IMAGES_DIR, clean_filename)
-            process_image(original_image_url, clean_path, add_border=False)
-
-        # TikTok-optimized title & description
-        # TikTok-optimized title & description
-        tiktok_title = scraper_utils.format_inventory_title(model, trim, clean_installment)
-        tiktok_desc = scraper_utils.format_inventory_description("DS Automobiles", model, trim, clean_installment)
-
-        row = {
-            "vehicle_id": vin,
-            "title": tiktok_title,
-            "description": tiktok_desc,
-            "link": link,
-            "image_link": image,
-            "make": "DS Automobiles",
-            "model": model,
-            "year": year,
-            "mileage.value": 0,
-            "mileage.unit": "KM",
-            "body_style": "SUV" if "7" in model or "3" in model else "Hatchback",
-            "exterior_color": color,
-            "state_of_vehicle": "New",
-            "price": full_price,
-            "currency": "PLN",
-            "address": address_text,
-            "latitude": lat,
-            "longitude": lon,
-            "offer_type": "LEASE",
-            "amount_price": amount_price_final,
-            "amount_qualifier": "per month",
-            "fuel_type": fuel,
-            "transmission": trans,
-            "drivetrain": drive
-        }
-        processed_rows.append(row)
-
     print(f"\nGenerowanie feedu z {len(processed_rows)} ofertami...")
-    
-    if driver:
-        driver.quit()
-        print("Selenium driver closed.")
 
-    # Czyszczenie starych zdjęć
     current_vins = [r['vehicle_id'] for r in processed_rows]
     cleanup_images(current_vins)
     
-    # Bezpieczny zapis z scraper_utils
     success = scraper_utils.safe_save_csv(processed_rows, fieldnames, OUTPUT_FILE)
     
     if success:
