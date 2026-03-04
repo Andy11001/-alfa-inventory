@@ -121,6 +121,7 @@ def process_product(product, index, total_count):
         full_price = f"{re.sub(r'[^0-9]', '', price_match.group(1))} PLN"
 
     installment = ""
+    detected_city = "Warszawa"  # Default fallback
     driver = None
     try:
         driver = init_driver()
@@ -129,7 +130,34 @@ def process_product(product, index, total_count):
             installment = b2b_price
             print(f"  [{index}/{total_count}] {vin}: Rata = {b2b_price} PLN")
         else:
-             print(f"  [{index}/{total_count}] {vin}: Brak raty B2B")
+              print(f"  [{index}/{total_count}] {vin}: Brak raty B2B")
+        
+        # Extract dealer city from page dataLayer (edealerCity)
+        try:
+            page_source = driver.page_source
+            city_match = re.search(r'"edealerCity"\s*:\s*"([^"]+)"', page_source)
+            if city_match and city_match.group(1):
+                candidate = city_match.group(1)
+                if candidate in DEALER_LOCATIONS:
+                    detected_city = candidate
+                else:
+                    # Try case-insensitive match
+                    for known_city in DEALER_LOCATIONS.keys():
+                        if known_city.upper() == candidate.upper():
+                            detected_city = known_city
+                            break
+            else:
+                # Fallback: try edealerName
+                name_match = re.search(r'"edealerName"\s*:\s*"([^"]+)"', page_source)
+                if name_match:
+                    dealer_name = name_match.group(1).upper()
+                    for city in DEALER_LOCATIONS.keys():
+                        if city.upper() in dealer_name:
+                            detected_city = city
+                            break
+        except Exception:
+            pass  # Keep default "Warszawa"
+        
     except Exception as e:
          print(f"  [{index}/{total_count}] {vin}: Err Selenium {e}")
     finally:
@@ -156,8 +184,7 @@ def process_product(product, index, total_count):
         if download_image_clean(image, local_image_path):
             image = f"{GITHUB_BASE_IMAGE_URL}/{image_filename}"
 
-    detected_city = "Warszawa"
-    dealer_data = DEALER_LOCATIONS["Warszawa"]
+    dealer_data = DEALER_LOCATIONS.get(detected_city, DEALER_LOCATIONS["Warszawa"])
     address_text = format_address_json(dealer_data["street"], detected_city)
 
     tiktok_title = scraper_utils.format_inventory_title(model, trim, clean_installment)
