@@ -231,3 +231,11 @@ jobs:
           for i in {1..7}; do
             git pull --rebase origin master && git push origin master && break || sleep 15
           done
+
+      # --- DEPLOY GIST (Peugeot) ---
+      - name: Update Peugeot Inventory Gist
+        uses: exuanbo/actions-deploy-gist@v1
+        with:
+          token: ${{ secrets.GIST_TOKEN }}
+          gist_id: fb76718a7c573a22353d771565a945c8
+          file_path: data/peugeot_inventory.csv
