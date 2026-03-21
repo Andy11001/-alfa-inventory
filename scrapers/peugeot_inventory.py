@@ -20,9 +20,12 @@ except ModuleNotFoundError:
 API_URL = "https://sklep.peugeot.pl/wp-json/wp/v2/product"
 BASE_URL = "https://sklep.peugeot.pl"
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
-OUTPUT_FILE = os.path.join(OUTPUT_DIR, "peugeot_inventory.csv")
+OUTPUT_FILE_OSO = os.path.join(OUTPUT_DIR, "peugeot_osobowe_inventory.csv")
+OUTPUT_FILE_LCV = os.path.join(OUTPUT_DIR, "peugeot_lcv_inventory.csv")
 IMAGES_DIR = os.path.join(OUTPUT_DIR, "images")
 GITHUB_BASE_IMAGE_URL = "https://raw.githubusercontent.com/Andy11001/-alfa-inventory/master/data/images"
+
+LCV_MODELS = ["Boxer", "Boxer Podwozie", "Expert", "Partner"]
 
 # --- Model category slug -> display name ---
 # Includes both readable slugs AND numeric WP term IDs found in class_list
@@ -416,7 +419,7 @@ def main():
             except Exception as e:
                 print(f"  Błąd wątku: {e}")
 
-    # Step 3: Save CSV
+    # Step 3: Save CSVs
     print(f"\n[3/3] Zapisywanie {len(processed_rows)} ofert...")
 
     fieldnames = [
@@ -428,14 +431,26 @@ def main():
         "fuel_type", "transmission", "drivetrain"
     ]
 
-    success = scraper_utils.safe_save_csv(processed_rows, fieldnames, OUTPUT_FILE, min_rows_threshold=5)
+    osobowe_rows = [r for r in processed_rows if r["model"] not in LCV_MODELS]
+    lcv_rows = [r for r in processed_rows if r["model"] in LCV_MODELS]
 
-    if success:
-        print(f"\n✅ Sukces! Zapisano {len(processed_rows)} ofert do {OUTPUT_FILE}")
+    print(f"  Osobowe: {len(osobowe_rows)} pojazdów")
+    print(f"  Dostawcze: {len(lcv_rows)} pojazdów")
+
+    success_oso = scraper_utils.safe_save_csv(osobowe_rows, fieldnames, OUTPUT_FILE_OSO, min_rows_threshold=0)
+    success_lcv = scraper_utils.safe_save_csv(lcv_rows, fieldnames, OUTPUT_FILE_LCV, min_rows_threshold=0)
+
+    if success_oso:
+        print(f"✅ Sukces! Zapisano {len(osobowe_rows)} osobówek -> {OUTPUT_FILE_OSO}")
     else:
-        print(f"\n❌ BŁĄD: Nie udało się zapisać {OUTPUT_FILE}")
+        print(f"❌ BŁĄD przy zapisie osobówek -> {OUTPUT_FILE_OSO}")
 
-    print("Zakończono.")
+    if success_lcv:
+        print(f"✅ Sukces! Zapisano {len(lcv_rows)} dostawczych -> {OUTPUT_FILE_LCV}")
+    else:
+        print(f"❌ BŁĄD przy zapisie dostawczych -> {OUTPUT_FILE_LCV}")
+
+    print("\nZakończono.")
 
 
 if __name__ == "__main__":

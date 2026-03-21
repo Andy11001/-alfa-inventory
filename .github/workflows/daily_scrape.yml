@@ -233,9 +233,16 @@ jobs:
           done
 
       # --- DEPLOY GIST (Peugeot) ---
-      - name: Update Peugeot Inventory Gist
+      - name: Update Peugeot Osobowe Inventory Gist
         uses: exuanbo/actions-deploy-gist@v1
         with:
           token: ${{ secrets.GIST_TOKEN }}
           gist_id: fb76718a7c573a22353d771565a945c8
-          file_path: data/peugeot_inventory.csv
+          file_path: data/peugeot_osobowe_inventory.csv
+
+      - name: Update Peugeot Dostawcze Inventory Gist
+        uses: exuanbo/actions-deploy-gist@v1
+        with:
+          token: ${{ secrets.GIST_TOKEN }}
+          gist_id: dd4d1534cbd48005e04fe1462aa27acc
+          file_path: data/peugeot_lcv_inventory.csv
