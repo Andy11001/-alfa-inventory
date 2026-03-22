@@ -66,11 +66,11 @@ def download_image_clean(url, filepath):
         pass
     return False
 
-def process_product(product, index, total_count):
+def process_product(product, index, total_count, driver):
     try:
-        from scrapers.selenium_helper import init_driver, get_b2b_price_selenium
+        from scrapers.selenium_helper import get_b2b_price_selenium
     except:
-        from selenium_helper import init_driver, get_b2b_price_selenium
+        from selenium_helper import get_b2b_price_selenium
     
     pid = str(product.get("id"))
     link = product.get("link")
@@ -122,9 +122,7 @@ def process_product(product, index, total_count):
 
     installment = ""
     detected_city = "Warszawa"  # Default fallback
-    driver = None
     try:
-        driver = init_driver()
         b2b_price = get_b2b_price_selenium(link, driver=driver)
         if b2b_price:
             installment = b2b_price
@@ -160,11 +158,6 @@ def process_product(product, index, total_count):
         
     except Exception as e:
          print(f"  [{index}/{total_count}] {vin}: Err Selenium {e}")
-    finally:
-        if driver:
-            try: driver.quit()
-            except: pass
-            
     clean_installment = installment.replace("PLN", "").replace(" ", "").strip()
     if not clean_installment or not clean_installment.isdigit() or int(clean_installment) <= 0:
         return None
@@ -219,6 +212,32 @@ def process_product(product, index, total_count):
     
     return {"row": row, "is_commercial": is_commercial}
 
+def process_chunk(chunk, chunk_id, total_count, base_index):
+    try:
+        from scrapers.selenium_helper import init_driver
+    except:
+        from selenium_helper import init_driver
+        
+    driver = None
+    results = []
+    try:
+        driver = init_driver()
+        for i, p in enumerate(chunk):
+            real_index = base_index + i + 1
+            res = process_product(p, real_index, total_count, driver)
+            if res:
+                results.append(res)
+            try: driver.delete_all_cookies()
+            except: pass
+    except Exception as e:
+        print(f"Chunk {chunk_id} error: {e}")
+    finally:
+        if driver:
+            try: driver.quit()
+            except: pass
+            
+    return results
+
 def main():
     print("Pobieranie listy pojazdów z API sklepu Opel...")
     os.makedirs(IMAGES_DIR, exist_ok=True)
@@ -257,17 +276,25 @@ def main():
 
     MAX_WORKERS = 4
     
+    chunk_size = (total + MAX_WORKERS - 1) // MAX_WORKERS
+    chunks = [all_products[i * chunk_size:(i + 1) * chunk_size] for i in range(MAX_WORKERS)]
+
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        futures = {executor.submit(process_product, p, i+1, total): p for i, p in enumerate(all_products)}
+        futures = []
+        base_idx = 0
+        for i, chunk in enumerate(chunks):
+            futures.append(executor.submit(process_chunk, chunk, i+1, total, base_idx))
+            base_idx += len(chunk)
         
         for future in as_completed(futures):
             try:
-                result = future.result()
-                if result:
-                    if result["is_commercial"]:
-                        dostawcze_rows.append(result["row"])
-                    else:
-                        osobowe_rows.append(result["row"])
+                res_list = future.result()
+                if res_list:
+                    for result in res_list:
+                        if result["is_commercial"]:
+                            dostawcze_rows.append(result["row"])
+                        else:
+                            osobowe_rows.append(result["row"])
             except Exception as e:
                 print(f"Błąd wątku: {e}")
 

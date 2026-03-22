@@ -173,11 +173,11 @@ def cleanup_images(current_vins):
     if removed_count > 0:
         print(f"Usunięto {removed_count} nieaktualnych zdjęć.")
 
-def process_product(product, index, total_count):
+def process_product(product, index, total_count, driver):
     try:
-        from scrapers.selenium_helper import init_driver, get_b2b_price_selenium
+        from scrapers.selenium_helper import get_b2b_price_selenium
     except ImportError:
-        from selenium_helper import init_driver, get_b2b_price_selenium
+        from selenium_helper import get_b2b_price_selenium
 
     local_session = requests.Session()
     local_session.headers.update({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"})
@@ -224,9 +224,7 @@ def process_product(product, index, total_count):
     full_price, address_text, year, lat, lon = parse_detail_page(link, local_session)
 
     installment = ""
-    driver = None
     try:
-        driver = init_driver()
         b2b_price = get_b2b_price_selenium(link, driver=driver)
         if b2b_price:
             installment = b2b_price
@@ -235,10 +233,6 @@ def process_product(product, index, total_count):
             print(f"  [{index}/{total_count}] {vin}: Brak raty B2B — pomijam")
     except Exception as e:
         print(f"  [{index}/{total_count}] {vin}: Błąd Selenium: {e}")
-    finally:
-        if driver:
-            try: driver.quit()
-            except: pass
 
     clean_installment = installment.replace("PLN", "").replace(" ", "").strip()
     
@@ -307,6 +301,32 @@ def process_product(product, index, total_count):
     }
     return row
 
+def process_chunk(chunk, chunk_id, total_count, base_index):
+    try:
+        from scrapers.selenium_helper import init_driver
+    except ImportError:
+        from selenium_helper import init_driver
+
+    driver = None
+    results = []
+    try:
+        driver = init_driver()
+        for i, p in enumerate(chunk):
+            real_index = base_index + i + 1
+            res = process_product(p, real_index, total_count, driver)
+            if res:
+                results.append(res)
+            try: driver.delete_all_cookies()
+            except: pass
+    except Exception as e:
+        print(f"Chunk {chunk_id} error: {e}")
+    finally:
+        if driver:
+            try: driver.quit()
+            except: pass
+
+    return results
+
 def main():
     print("Pobieranie listy pojazdów z API sklepu DS...")
     all_products = []
@@ -340,13 +360,21 @@ def main():
     processed_rows = []
     MAX_WORKERS = 4
     
+    chunk_size = (total + MAX_WORKERS - 1) // MAX_WORKERS
+    chunks = [all_products[i * chunk_size:(i + 1) * chunk_size] for i in range(MAX_WORKERS)]
+
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        futures = {executor.submit(process_product, p, i+1, total): p for i, p in enumerate(all_products)}
+        futures = []
+        base_idx = 0
+        for i, chunk in enumerate(chunks):
+            futures.append(executor.submit(process_chunk, chunk, i+1, total, base_idx))
+            base_idx += len(chunk)
+            
         for future in as_completed(futures):
             try:
-                res = future.result()
-                if res:
-                    processed_rows.append(res)
+                res_list = future.result()
+                if res_list:
+                    processed_rows.extend(res_list)
             except Exception as e:
                 print(f"Błąd wątku DS: {e}")
 
