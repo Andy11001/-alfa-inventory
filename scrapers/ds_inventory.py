@@ -312,6 +312,12 @@ def process_chunk(chunk, chunk_id, total_count, base_index):
     try:
         driver = init_driver()
         for i, p in enumerate(chunk):
+            if i > 0 and i % 50 == 0:
+                print(f"  [Chunk {chunk_id}] Restarting driver to free RAM...")
+                try: driver.quit()
+                except: pass
+                driver = init_driver()
+                
             real_index = base_index + i + 1
             res = process_product(p, real_index, total_count, driver)
             if res:

@@ -366,6 +366,13 @@ def process_chunk(chunk, chunk_id, total_count, base_index):
     try:
         driver = init_driver()
         for i, p in enumerate(chunk):
+            # Restart driver every 50 pages to prevent Chrome memory leaks
+            if i > 0 and i % 50 == 0:
+                print(f"  [Chunk {chunk_id}] Restarting driver to free RAM...")
+                try: driver.quit()
+                except: pass
+                driver = init_driver()
+            
             real_index = base_index + i + 1
             res = process_product(p, real_index, total_count, driver)
             if res:
@@ -425,7 +432,7 @@ def main():
     print("\n[2/3] Przetwarzanie ofert (Selenium B2B)...\n")
 
     processed_rows = []
-    MAX_WORKERS = 4
+    MAX_WORKERS = 2
     
     # Split all_products into MAX_WORKERS chunks
     chunk_size = (total + MAX_WORKERS - 1) // MAX_WORKERS

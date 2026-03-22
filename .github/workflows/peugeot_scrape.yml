@@ -1,0 +1,72 @@
+name: Peugeot Daily Scrape
+
+on:
+  push:
+    branches: [ "master" ]
+  schedule: # Offset Peugeot by 30 mins to not overlap start time with others
+    - cron: '30 */4 * * *'
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  update-peugeot:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4 pandas selenium Pillow python-dotenv
+
+      - name: Set up Chrome for Selenium
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
+      - name: Create data and images directories
+        run: mkdir -p data/images
+
+      - name: Run Peugeot Inventory Scraper
+        env:
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
+        run: PYTHONPATH=. python scrapers/peugeot_inventory.py
+
+      # --- COMMIT CHANGES ---
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add data/peugeot_* data/images/* || true
+          git commit -m "Auto: update Peugeot feeds [skip ci]" || echo "No changes to commit"
+          # Retry loop to prevent concurrent push failures
+          for i in {1..7}; do
+            git pull --rebase origin master && git push origin master && break || sleep 15
+          done
+
+      # --- DEPLOY GIST (Peugeot) ---
+      - name: Update Peugeot Osobowe Inventory Gist
+        uses: exuanbo/actions-deploy-gist@v1
+        with:
+          token: ${{ secrets.GIST_TOKEN }}
+          gist_id: fb76718a7c573a22353d771565a945c8
+          file_path: data/peugeot_osobowe_inventory.csv
+
+      - name: Update Peugeot Dostawcze Inventory Gist
+        uses: exuanbo/actions-deploy-gist@v1
+        with:
+          token: ${{ secrets.GIST_TOKEN }}
+          gist_id: dd4d1534cbd48005e04fe1462aa27acc
+          file_path: data/peugeot_lcv_inventory.csv
