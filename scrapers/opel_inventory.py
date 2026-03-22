@@ -255,7 +255,7 @@ def main():
     osobowe_rows = []
     dostawcze_rows = []
 
-    MAX_WORKERS = 15
+    MAX_WORKERS = 4
     
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         futures = {executor.submit(process_product, p, i+1, total): p for i, p in enumerate(all_products)}

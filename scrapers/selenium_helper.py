@@ -12,7 +12,9 @@ def init_driver():
     options.add_argument("--no-sandbox")
     options.add_argument("--window-size=1920,1080")
     options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-    return webdriver.Chrome(options=options)
+    driver = webdriver.Chrome(options=options)
+    driver.set_page_load_timeout(45) # Prevent hanging on bad loads
+    return driver
 
 def _trigger_wp_rocket(driver):
     """Trigger WP Rocket lazy loading by simulating user interaction.

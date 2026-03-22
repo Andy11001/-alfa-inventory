@@ -404,7 +404,7 @@ def main():
     print("\n[2/3] Przetwarzanie ofert (Selenium B2B)...\n")
 
     processed_rows = []
-    MAX_WORKERS = 15
+    MAX_WORKERS = 4
 
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         futures = {
