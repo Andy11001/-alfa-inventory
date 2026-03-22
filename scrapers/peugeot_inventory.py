@@ -432,7 +432,7 @@ def main():
     print("\n[2/3] Przetwarzanie ofert (Selenium B2B)...\n")
 
     processed_rows = []
-    MAX_WORKERS = 2
+    MAX_WORKERS = 4
     
     # Split all_products into MAX_WORKERS chunks
     chunk_size = (total + MAX_WORKERS - 1) // MAX_WORKERS
