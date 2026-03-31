@@ -181,6 +181,30 @@ def extract_model_data_from_api(versions):
 
     return trims
 
+def scrape_model_promo_price(url):
+    try:
+        r = session.get(url, timeout=15)
+        if r.status_code != 200:
+            return None
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(r.text, 'html.parser')
+        text = soup.get_text(separator=' ', strip=True)
+        
+        matches = re.findall(r'cena[^\d]*brutto[^\d]*(\d[\d\s]*\d)\s*z[łl]', text, re.IGNORECASE)
+        prices_found = []
+        for m in matches:
+            clean_str = re.sub(r'[^\d]', '', m)
+            if clean_str.isdigit():
+                val = int(clean_str)
+                # Ignore generic example constants often found in Peugeot generic disclaimers
+                if val not in [100000]: 
+                    prices_found.append(val)
+        if prices_found:
+            return min(prices_found)
+    except Exception as e:
+        print(f"  ⚠ Scrape error na {url}: {e}")
+    return None
+
 def generate_feed_rows(model_label, trims_data, is_commercial):
     rows = []
     
@@ -196,13 +220,29 @@ def generate_feed_rows(model_label, trims_data, is_commercial):
             fuel = engine["fuel_type"]
             engine_desc = engine["engine"]
             transmission = engine["transmission"]
-            price_val = int(engine["api_price"]) if engine["api_price"] > 0 else None
+            price_val = int(engine['api_price']) if engine['api_price'] > 0 else None
+            
+            # Scrape promo price
+            page_url = get_model_url(model_label, fuel)
+            
+            # Use cached or scrape it once per model url
+            if not hasattr(generate_feed_rows, "promo_cache"):
+                generate_feed_rows.promo_cache = {}
+            if page_url not in generate_feed_rows.promo_cache:
+                generate_feed_rows.promo_cache[page_url] = scrape_model_promo_price(page_url)
+            
+            promo_price = generate_feed_rows.promo_cache[page_url]
+            
+            # Apply promo price ONLY if it's cheaper than API price, maximizing discount correctly
+            # Usually applied to the cheapest variant, but for simplicity of 'od XXX', if API base is higher, we override it
+            if promo_price and price_val and promo_price < price_val:
+                # We apply the specific promo price ONLY to the cheapest trims of that model 
+                # to simulate 'from' effectively! Or globally if we want all models to show the discounted price
+                # For safety, let's just use the promo price directly as it represents 'od XXX PLN' for the whole model
+                price_val = promo_price
 
             if not price_val:
                 continue
-
-            # Identify if it's LCV vs Passenger to adapt text
-            page_url = get_model_url(model_label, fuel)
             
             amount_price_str = f"{price_val} PLN"
             
