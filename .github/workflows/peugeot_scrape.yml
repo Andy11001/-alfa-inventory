@@ -44,6 +44,9 @@ jobs:
           EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
         run: PYTHONPATH=. python scrapers/peugeot_inventory.py
 
+      - name: Run Peugeot Model Feed
+        run: PYTHONPATH=. python scrapers/peugeot_model.py
+
       # --- COMMIT CHANGES ---
       - name: Commit and push changes
         run: |
@@ -70,3 +73,18 @@ jobs:
           token: ${{ secrets.GIST_TOKEN }}
           gist_id: dd4d1534cbd48005e04fe1462aa27acc
           file_path: data/peugeot_lcv_inventory.csv
+
+      # --- DEPLOY GIST (Peugeot Model) ---
+      - name: Update Peugeot Osobowe Model Gist
+        uses: exuanbo/actions-deploy-gist@v1
+        with:
+          token: ${{ secrets.GIST_TOKEN }}
+          gist_id: a36f3d0b2390ea2b01d13ba86d0ada59
+          file_path: data/peugeot_osobowe_model.csv
+
+      - name: Update Peugeot Dostawcze Model Gist
+        uses: exuanbo/actions-deploy-gist@v1
+        with:
+          token: ${{ secrets.GIST_TOKEN }}
+          gist_id: e5d8cd4d32ebb20c4157a2611379606d
+          file_path: data/peugeot_dostawcze_model.csv

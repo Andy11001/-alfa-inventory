@@ -431,6 +431,7 @@ def run():
     for m in api_models:
         label = m.get("label", "").upper().replace(" ", "")
         if label == "N°4": label = "DSN4"
+        elif label == "N°7": label = "DSN7"
         elif label == "N°8": label = "DSN8"
         api_models_map[label] = m.get("id")
 
@@ -455,7 +456,7 @@ def run():
         menu_title_upper = item['title'].upper().replace(" ", "").replace("N°", "N")
         
         # Determine base model for API lookup
-        known_base_models = ["DSN4", "DSN8", "DS3", "DS4", "DS7", "DS9"]
+        known_base_models = ["DSN4", "DSN7", "DSN8", "DS3", "DS4", "DS7", "DS9"]
         matched_api_id = None
         base_model_label = item['title']
         
@@ -467,6 +468,7 @@ def run():
                 matched_api_id = api_models_map.get(kbm)
                 # Odtwarzamy przybliżoną nazwę bazy jeśli brak
                 if kbm == "DSN4": base_model_label = "DS N°4"
+                elif kbm == "DSN7": base_model_label = "DS N°7"
                 elif kbm == "DSN8": base_model_label = "DS N°8"
                 elif kbm == "DS3": base_model_label = "DS 3"
                 elif kbm == "DS4": base_model_label = "DS 4"
@@ -475,7 +477,44 @@ def run():
                 break
                 
         if not matched_api_id:
-            print(f"   ⚠️ Nie dopasowano '{item['title']}' do żadnego modelu API. Pomijam warianty zaawansowane.")
+            print(f"   ⚠️ Nie dopasowano '{item['title']}' do żadnego modelu API. Tworzę wpis podstawowy z danych menu.")
+            # Fallback: model istnieje w menu ale nie w API - tworzymy podstawowy wpis
+            amount_price_str = f"{installment} PLN" if installment else ""
+            downpayment_val = int(price * 0.10) if price else 0
+            downpayment_str = f"{downpayment_val} PLN" if downpayment_val else ""
+            
+            full_model_title = item['title']
+            description = scraper_utils.format_model_description(full_model_title, amount_price_str)
+            tiktok_title = scraper_utils.format_model_title(full_model_title, amount_price_str)
+            
+            fallback_record = {
+                "vehicle_id": scraper_utils.generate_stable_id(f"{item['title']}-Standard-Electric", prefix="DS"),
+                "title": tiktok_title,
+                "description": description,
+                "rodzaj": "modelowy",
+                "make": "DS Automobiles",
+                "model": base_model_label,
+                "year": "2025",
+                "link": url,
+                "image_link": item['image_url'],
+                "exterior_color": "Standard",
+                "trim": "",
+                "offer_disclaimer": disclaimer,
+                "offer_disclaimer_url": url,
+                "offer_type": "LEASE",
+                "term_length": "24",
+                "offer_term_qualifier": "months",
+                "amount_price": amount_price_str,
+                "amount_qualifier": "per month",
+                "downpayment": downpayment_str,
+                "downpayment_qualifier": "due at signing",
+                "emission_disclaimer": "",
+                "emission_disclaimer_url": "",
+                "emission_overlay_disclaimer": "",
+                "emission_image_link": ""
+            }
+            final_data.append(fallback_record)
+            print(f"   ✅ Dodano wpis podstawowy dla {base_model_label}")
             continue
             
         print(f"   🛠️ Pobieranie wariantów API dla bazowego {base_model_label} ({matched_api_id})...")
