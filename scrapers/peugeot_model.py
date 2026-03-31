@@ -181,7 +181,7 @@ def extract_model_data_from_api(versions):
 
     return trims
 
-def scrape_model_promo_price(url):
+def scrape_model_lease_price(url):
     try:
         r = session.get(url, timeout=15)
         if r.status_code != 200:
@@ -190,15 +190,13 @@ def scrape_model_promo_price(url):
         soup = BeautifulSoup(r.text, 'html.parser')
         text = soup.get_text(separator=' ', strip=True)
         
-        matches = re.findall(r'cena[^\d]*brutto[^\d]*(\d[\d\s]*\d)\s*z[łl]', text, re.IGNORECASE)
+        matches = re.findall(r'(\d[\d\s]*\d)\s*z[łl]\s*(?:netto|brutto)?\s*/\s*mies', text, re.IGNORECASE)
         prices_found = []
         for m in matches:
-            clean_str = re.sub(r'[^\d]', '', m)
+            clean_str = re.sub(r'[^\d]', '', m[0] if isinstance(m, tuple) else m)
             if clean_str.isdigit():
                 val = int(clean_str)
-                # Ignore generic example constants often found in Peugeot generic disclaimers
-                if val not in [100000]: 
-                    prices_found.append(val)
+                prices_found.append(val)
         if prices_found:
             return min(prices_found)
     except Exception as e:
@@ -208,48 +206,47 @@ def scrape_model_promo_price(url):
 def generate_feed_rows(model_label, trims_data, is_commercial):
     rows = []
     
-    # Model naming logic: LCVs are usually just their names, PCs have "Peugeot " prefix mostly
-    model_name = f"Peugeot {model_label}" if not is_commercial else f"Peugeot {model_label.capitalize()}"
+    model_name = f'Peugeot {model_label}' if not is_commercial else f'Peugeot {model_label.capitalize()}'
     
     for trim_label, trim_info in trims_data.items():
-        colors = trim_info["colors"]
+        colors = trim_info['colors']
         if not colors:
-            colors = [{"name": "Standard", "image": ""}]
+            colors = [{'name': 'Standard', 'image': ''}]
 
-        for engine in trim_info["engines"]:
+        for engine in trim_info['engines']:
             fuel = engine["fuel_type"]
             engine_desc = engine["engine"]
             transmission = engine["transmission"]
-            price_val = int(engine['api_price']) if engine['api_price'] > 0 else None
+            api_price = int(engine['api_price']) if engine['api_price'] > 0 else None
             
-            # Scrape promo price
+            if not api_price:
+                continue
+                
             page_url = get_model_url(model_label, fuel)
             
-            # Use cached or scrape it once per model url
-            if not hasattr(generate_feed_rows, "promo_cache"):
-                generate_feed_rows.promo_cache = {}
-            if page_url not in generate_feed_rows.promo_cache:
-                generate_feed_rows.promo_cache[page_url] = scrape_model_promo_price(page_url)
+            if not hasattr(generate_feed_rows, "lease_cache"):
+                generate_feed_rows.lease_cache = {}
+            if page_url not in generate_feed_rows.lease_cache:
+                generate_feed_rows.lease_cache[page_url] = scrape_model_lease_price(page_url)
             
-            promo_price = generate_feed_rows.promo_cache[page_url]
+            lease_val = generate_feed_rows.lease_cache[page_url]
             
-            # Apply promo price ONLY if it's cheaper than API price, maximizing discount correctly
-            # Usually applied to the cheapest variant, but for simplicity of 'od XXX', if API base is higher, we override it
-            if promo_price and price_val and promo_price < price_val:
-                # We apply the specific promo price ONLY to the cheapest trims of that model 
-                # to simulate 'from' effectively! Or globally if we want all models to show the discounted price
-                # For safety, let's just use the promo price directly as it represents 'od XXX PLN' for the whole model
-                price_val = promo_price
-
-            if not price_val:
-                continue
+            full_title = f'{model_name} {trim_label}' if trim_label != 'Standard' else model_name
             
-            amount_price_str = f"{price_val} PLN"
+            if lease_val:
+                offer_type = 'LEASE'
+                amount_price_str = f'{lease_val} PLN'
+                amount_qualifier_str = 'per month'
+                price_str = f'{api_price} PLN'
+                tiktok_title = f'{full_title} · od {lease_val} PLN / mies.'
+            else:
+                offer_type = 'CASH'
+                amount_price_str = f'{api_price} PLN'
+                amount_qualifier_str = 'Total'
+                price_str = f'{api_price} PLN'
+                tiktok_title = f'{full_title} · od {api_price} PLN'
             
-            # Tiktok title length guard
-            full_title = f"{model_name} {trim_label}" if trim_label != "Standard" else model_name
-            tiktok_title = f"{full_title} · od {price_val} PLN"
-            tiktok_desc = f"Nowy {full_title} · {engine_desc} · Sprawdź ofertę!"
+            tiktok_desc = f'Nowy {full_title} · {engine_desc} · Sprawdź ofertę!'
 
             for color in colors:
                 color_name = color["name"]
@@ -272,16 +269,17 @@ def generate_feed_rows(model_label, trims_data, is_commercial):
                     "image_link": img_url,
                     "exterior_color": color_name,
                     "additional_image_link": "",
-                    "trim": trim_label,
-                    "offer_disclaimer": "Oferta ma charakter informacyjny. Szczegóły u autoryzowanego dealera Peugeot.",
-                    "offer_disclaimer_url": page_url,
-                    "offer_type": "CASH",
-                    "term_length": "",
-                    "offer_term_qualifier": "",
-                    "amount_price": amount_price_str,
-                    "amount_percentage": "",
-                    "amount_qualifier": "Total",
-                    "downpayment": "",
+                    'trim': trim_label,
+                    'offer_disclaimer': 'Oferta ma charakter informacyjny. Szczegóły u autoryzowanego dealera Peugeot.',
+                    'offer_disclaimer_url': page_url,
+                    'price': price_str,
+                    'offer_type': offer_type,
+                    'term_length': '',
+                    'offer_term_qualifier': '',
+                    'amount_price': amount_price_str,
+                    'amount_percentage': '',
+                    'amount_qualifier': amount_qualifier_str,
+                    'downpayment': '',
                     "downpayment_qualifier": "",
                     "emission_disclaimer": "",
                     "emission_disclaimer_url": "",
@@ -347,12 +345,12 @@ def main():
 
     print("\n[3/3] Zapisywanie feedów modelowych...")
     fieldnames = [
-        "vehicle_id", "title", "description", "rodzaj", "make", "model", "year", "link", "image_link",
-        "exterior_color", "additional_image_link", "trim", "offer_disclaimer",
-        "offer_disclaimer_url", "offer_type", "term_length", "offer_term_qualifier",
-        "amount_price", "amount_percentage", "amount_qualifier", "downpayment",
-        "downpayment_qualifier", "emission_disclaimer", "emission_disclaimer_url",
-        "emission_overlay_disclaimer", "emission_image_link", "fuel_type"
+        'vehicle_id', 'title', 'description', 'rodzaj', 'make', 'model', 'year', 'link', 'image_link',
+        'exterior_color', 'additional_image_link', 'trim', 'offer_disclaimer',
+        'offer_disclaimer_url', 'price', 'offer_type', 'term_length', 'offer_term_qualifier',
+        'amount_price', 'amount_percentage', 'amount_qualifier', 'downpayment',
+        'downpayment_qualifier', 'emission_disclaimer', 'emission_disclaimer_url',
+        'emission_overlay_disclaimer', 'emission_image_link', 'fuel_type'
     ]
 
     print(f"  Osobowe: {len(all_osobowe)}")
