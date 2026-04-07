@@ -1,7 +1,7 @@
 """
 Citroën Inventory (Stock) Feed
 - Data source: WordPress JSON API at sklep.citroen.pl
-- Installment prices: Selenium B2B scraping
+- Installment prices + dealer city: Selenium B2B scraping
 - Output: two CSVs — citroen_osobowe_inventory.csv + citroen_lcv_inventory.csv
 """
 import requests
@@ -28,19 +28,18 @@ OUTPUT_FILE_LCV = os.path.join(OUTPUT_DIR, "citroen_lcv_inventory.csv")
 IMAGES_DIR = os.path.join(OUTPUT_DIR, "images")
 GITHUB_BASE_IMAGE_URL = "https://raw.githubusercontent.com/Andy11001/-alfa-inventory/master/data/images"
 
-LCV_MODELS = ["Berlingo", "Jumpy", "Jumper", "Berlingo Van", "e-Berlingo", "e-Jumpy", "e-Jumper"]
+LCV_MODELS = ["Berlingo", "Berlingo Van", "ë-Berlingo", "Jumpy", "ë-Jumpy", "Jumper", "ë-Jumper"]
 
 MODEL_MAP = {
-    # Readable slugs
     "c3": "C3", "c3-aircross": "C3 Aircross", "nowy-c3-aircross": "Nowy C3 Aircross",
     "nowy-c3": "Nowy C3", "c4": "C4", "e-c4": "ë-C4", "c4-x": "C4 X",
     "e-c4-x": "ë-C4 X", "c5-aircross": "C5 Aircross",
     "nowy-c5-aircross": "Nowy C5 Aircross",
     "berlingo": "Berlingo", "e-berlingo": "ë-Berlingo",
+    "berlingo-van": "Berlingo Van",
     "jumpy": "Jumpy", "e-jumpy": "ë-Jumpy",
     "jumper": "Jumper", "e-jumper": "ë-Jumper",
     "spacetourer": "SpaceTourer", "e-spacetourer": "ë-SpaceTourer",
-    "berlingo-van": "Berlingo Van",
 }
 
 CITY_TO_REGION = {
@@ -50,6 +49,10 @@ CITY_TO_REGION = {
     "Łódź": "Łódzkie", "Szczecin": "Zachodniopomorskie",
     "Opole": "Opolskie", "Bielsko-Biała": "Śląskie",
     "Lublin": "Lubelskie", "Bydgoszcz": "Kujawsko-Pomorskie",
+    "Toruń": "Kujawsko-Pomorskie", "Rzeszów": "Podkarpackie",
+    "Radom": "Mazowieckie", "Kielce": "Świętokrzyskie",
+    "Białystok": "Podlaskie", "Słupsk": "Pomorskie",
+    "Gliwice": "Śląskie", "Rybnik": "Śląskie",
 }
 
 DEALER_LOCATIONS = {
@@ -72,14 +75,26 @@ def format_address_json(street, city):
     }, ensure_ascii=False)
 
 
-def process_product(product, index, total_count, driver=None):
+def download_image(url, filepath):
+    if os.path.exists(filepath):
+        return True
+    try:
+        r = requests.get(url, stream=True, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+        if r.status_code == 200:
+            with open(filepath, "wb") as f:
+                for chunk in r.iter_content(1024):
+                    f.write(chunk)
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def process_product(product, index, total_count, driver):
     try:
         from scrapers.selenium_helper import get_b2b_price_selenium
-    except:
-        try:
-            from selenium_helper import get_b2b_price_selenium
-        except:
-            get_b2b_price_selenium = None
+    except ImportError:
+        from selenium_helper import get_b2b_price_selenium
 
     pid = str(product.get("id"))
     link = product.get("link")
@@ -87,31 +102,43 @@ def process_product(product, index, total_count, driver=None):
     vin = title_raw if len(title_raw) == 17 else f"CIT-{pid}"
 
     classes = product.get("class_list", {})
+
+    # Model from product_cat
     model_slug = ""
     for cls in classes.values():
         if cls.startswith("product_cat-"):
-            model_slug = cls.replace("product_cat-", "")
-            if model_slug not in ["bez-kategorii"]:
+            slug = cls.replace("product_cat-", "")
+            if slug not in ["bez-kategorii"]:
+                model_slug = slug
                 break
 
-    if not model_slug or model_slug == "bez-kategorii":
+    if not model_slug:
+        link_match = re.search(r"/produkt/([^/]+)/", link or "")
+        if link_match:
+            model_slug = link_match.group(1)
+
+    if model_slug:
+        model = MODEL_MAP.get(model_slug, model_slug.replace("-", " ").title())
+    else:
         return None
 
-    model = MODEL_MAP.get(model_slug, model_slug.replace("-", " ").title())
-    is_commercial = any(lcv.lower() in model.lower() for lcv in LCV_MODELS)
+    if model_slug in ["bez-kategorii", ""] or model in ["Bez Kategorii"]:
+        return None
 
+    # Attributes from CSS classes
     color = "Standard"
     fuel = "Gasoline"
     trans = "Manual"
     trim = ""
     year = "2025"
+    body_style = "SUV"
 
     for cls in classes.values():
         if cls.startswith("pa_kolor-"):
             color = cls.replace("pa_kolor-", "").replace("-", " ").title()
         elif cls.startswith("pa_typ-paliwa-"):
             f_val = cls.replace("pa_typ-paliwa-", "")
-            if "hybryd" in f_val or "mhev" in f_val:
+            if "hybryda" in f_val or "mhev" in f_val:
                 fuel = "Hybrid"
             elif "elektryczn" in f_val:
                 fuel = "Electric"
@@ -123,75 +150,97 @@ def process_product(product, index, total_count, driver=None):
         elif cls.startswith("pa_poziom-wyposazenia-"):
             trim = cls.replace("pa_poziom-wyposazenia-", "").replace("-", " ").title()
         elif cls.startswith("pa_rok-produkcji-"):
-            y = cls.replace("pa_rok-produkcji-", "")
-            if len(y) == 4:
-                year = y
+            yr = cls.replace("pa_rok-produkcji-", "")
+            if len(yr) == 4 and yr.isdigit():
+                year = yr
+        elif cls.startswith("pa_typ-nadwozia-"):
+            b = cls.replace("pa_typ-nadwozia-", "")
+            if b in ["suv", "crossover"]:
+                body_style = "SUV"
+            elif b in ["van", "furgon"]:
+                body_style = "Van"
+            elif b in ["hatchback", "hatchback-5-drzwi"]:
+                body_style = "Hatchback"
+            elif b in ["kombi", "sw"]:
+                body_style = "Wagon"
 
-    # Price from Yoast
+    # Price from yoast
     full_price = ""
     yoast_desc = product.get("yoast_head_json", {}).get("description", "")
-    price_match = re.search(r"od\s+([\d\s]+)\s*zł", yoast_desc)
+    price_match = re.search(r"([\d\s]+)\s*zł", yoast_desc)
     if price_match:
-        installment_raw = re.sub(r"[^0-9]", "", price_match.group(1))
-    else:
-        installment_raw = ""
+        full_price = f"{re.sub(r'[^0-9]', '', price_match.group(1))} PLN"
 
-    # Try to get full price from meta
-    price_match2 = re.search(r"([\d\s]+)\s*zł", yoast_desc)
-    if price_match2:
-        full_price = f"{re.sub(r'[^0-9]', '', price_match2.group(1))} PLN"
-
-    # Selenium B2B price (optional)
+    # Selenium: B2B price + dealer city
+    installment = ""
     detected_city = "Warszawa"
-    if driver and get_b2b_price_selenium:
-        try:
-            b2b_price = get_b2b_price_selenium(link, driver=driver)
-            if b2b_price:
-                installment_raw = b2b_price
-                print(f"  [{index}/{total_count}] {vin}: Rata = {b2b_price} PLN")
-            else:
-                print(f"  [{index}/{total_count}] {vin}: Brak raty B2B")
+    try:
+        b2b_price = get_b2b_price_selenium(link, driver=driver)
+        if b2b_price:
+            installment = b2b_price
+            print(f"  [{index}/{total_count}] {vin}: Rata = {b2b_price} PLN")
+        else:
+            print(f"  [{index}/{total_count}] {vin}: Brak raty B2B")
 
+        # Extract dealer city from dataLayer
+        try:
             page_source = driver.page_source
             city_match = re.search(r'"edealerCity"\s*:\s*"([^"]+)"', page_source)
             if city_match and city_match.group(1):
-                candidate = city_match.group(1)
-                for known_city in DEALER_LOCATIONS:
-                    if known_city.upper() == candidate.upper():
-                        detected_city = known_city
-                        break
-        except Exception as e:
-            print(f"  [{index}/{total_count}] {vin}: Err {e}")
-    else:
-        if index % 50 == 0:
-            print(f"  [{index}/{total_count}] {vin}: (no Selenium)")
+                candidate = city_match.group(1).strip()
+                if candidate:
+                    for known_city in DEALER_LOCATIONS:
+                        if known_city.upper() == candidate.upper():
+                            detected_city = known_city
+                            break
+                    else:
+                        if len(candidate) > 1:
+                            detected_city = candidate
+            else:
+                name_match = re.search(r'"edealerName"\s*:\s*"([^"]+)"', page_source)
+                if name_match:
+                    dealer_name = name_match.group(1).upper()
+                    for city in DEALER_LOCATIONS:
+                        if city.upper() in dealer_name:
+                            detected_city = city
+                            break
+        except Exception:
+            pass
 
-    clean_installment = re.sub(r"[^0-9]", "", str(installment_raw))
+    except Exception as e:
+        print(f"  [{index}/{total_count}] {vin}: Err Selenium {e}")
+
+    clean_installment = installment.replace("PLN", "").replace(" ", "").strip()
     if not clean_installment or not clean_installment.isdigit() or int(clean_installment) <= 0:
-        # Still include but as CASH with full price
-        if not full_price:
-            return None
-        amount_price_final = full_price
-        offer_type = "CASH"
-        qualifier = "Total"
-    else:
-        amount_price_final = f"{clean_installment} PLN"
-        offer_type = "LEASE"
-        qualifier = "per month"
+        return None
 
     if not full_price:
         full_price = "100000 PLN"
 
+    amount_price_final = f"{clean_installment} PLN"
+
+    # Image
     image = ""
     imgs = product.get("yoast_head_json", {}).get("og_image", [])
     if imgs:
         image = imgs[0].get("url", "")
+    if image:
+        ext = ".webp" if image.endswith(".webp") else ".jpg"
+        image_filename = f"{vin}_clean{ext}"
+        local_path = os.path.join(IMAGES_DIR, image_filename)
+        if download_image(image, local_path):
+            image = f"{GITHUB_BASE_IMAGE_URL}/{image_filename}"
 
+    # Address
     dealer_data = DEALER_LOCATIONS.get(detected_city, DEALER_LOCATIONS["Warszawa"])
     address_text = format_address_json(dealer_data["street"], detected_city)
+    lat = dealer_data.get("lat", "52.2297")
+    lon = dealer_data.get("lon", "21.0122")
 
-    tiktok_title = scraper_utils.format_inventory_title(model, trim, clean_installment if offer_type == "LEASE" else "")
-    tiktok_desc = scraper_utils.format_inventory_description("Citroën", model, trim, clean_installment if offer_type == "LEASE" else "", detected_city)
+    is_commercial = any(lcv.lower() in model.lower() for lcv in LCV_MODELS)
+
+    tiktok_title = scraper_utils.format_inventory_title(model, trim, clean_installment)
+    tiktok_desc = scraper_utils.format_inventory_description("Citroën", model, trim, clean_installment, detected_city)
 
     row = {
         "vehicle_id": vin,
@@ -204,17 +253,17 @@ def process_product(product, index, total_count, driver=None):
         "year": year,
         "mileage.value": 0,
         "mileage.unit": "KM",
-        "body_style": "Van" if is_commercial else "SUV",
+        "body_style": body_style,
         "exterior_color": color,
         "state_of_vehicle": "New",
         "price": full_price,
         "currency": "PLN",
         "address": address_text,
-        "latitude": dealer_data["lat"],
-        "longitude": dealer_data["lon"],
-        "offer_type": offer_type,
+        "latitude": lat,
+        "longitude": lon,
+        "offer_type": "LEASE",
         "amount_price": amount_price_final,
-        "amount_qualifier": qualifier,
+        "amount_qualifier": "per month",
         "fuel_type": fuel,
         "transmission": trans,
         "drivetrain": "FWD",
@@ -222,10 +271,44 @@ def process_product(product, index, total_count, driver=None):
     return {"row": row, "is_commercial": is_commercial}
 
 
+def process_chunk(chunk, chunk_id, total_count, base_index):
+    try:
+        from scrapers.selenium_helper import init_driver
+    except ImportError:
+        from selenium_helper import init_driver
+
+    driver = None
+    results = []
+    try:
+        driver = init_driver()
+        for i, p in enumerate(chunk):
+            if i > 0 and i % 50 == 0:
+                print(f"  [Chunk {chunk_id}] Restarting driver to free RAM...")
+                try: driver.quit()
+                except: pass
+                driver = init_driver()
+
+            real_index = base_index + i + 1
+            res = process_product(p, real_index, total_count, driver)
+            if res:
+                results.append(res)
+            try: driver.delete_all_cookies()
+            except: pass
+    except Exception as e:
+        print(f"Chunk {chunk_id} error: {e}")
+    finally:
+        if driver:
+            try: driver.quit()
+            except: pass
+
+    return results
+
+
 def main():
     print("=" * 60)
-    print("Citroën Inventory Feed — sklep.citroen.pl WP API")
+    print("Citroën Inventory Feed — sklep.citroen.pl (Selenium)")
     print("=" * 60)
+
     os.makedirs(IMAGES_DIR, exist_ok=True)
 
     print("\n[1/3] Pobieranie listy produktów z API...")
@@ -245,7 +328,7 @@ def main():
             if not data:
                 break
             all_products.extend(data)
-            print(f"  Strona {page} ({len(data)} aut)")
+            print(f"  Strona {page} ({len(data)} aut, łącznie: {len(all_products)})")
             page += 1
         except Exception as e:
             print(f"  Koniec przy stronie {page}: {e}")
@@ -254,17 +337,30 @@ def main():
     total = len(all_products)
     print(f"  Łącznie: {total} produktów")
 
-    print("\n[2/3] Przetwarzanie ofert (bez Selenium)...")
-    osobowe_rows = []
-    dostawcze_rows = []
+    print("\n[2/3] Przetwarzanie ofert (Selenium B2B + lokalizacja)...\n")
 
-    for i, p in enumerate(all_products, 1):
-        result = process_product(p, i, total)
-        if result:
-            if result["is_commercial"]:
-                dostawcze_rows.append(result["row"])
-            else:
-                osobowe_rows.append(result["row"])
+    MAX_WORKERS = 2
+    chunk_size = (total + MAX_WORKERS - 1) // MAX_WORKERS
+    chunks = [all_products[i * chunk_size:(i + 1) * chunk_size] for i in range(MAX_WORKERS)]
+
+    all_results = []
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        futures = []
+        base_idx = 0
+        for i, chunk in enumerate(chunks):
+            futures.append(executor.submit(process_chunk, chunk, i + 1, total, base_idx))
+            base_idx += len(chunk)
+
+        for future in as_completed(futures):
+            try:
+                res_list = future.result()
+                if res_list:
+                    all_results.extend(res_list)
+            except Exception as e:
+                print(f"  Błąd wątku: {e}")
+
+    osobowe_rows = [r["row"] for r in all_results if not r["is_commercial"]]
+    lcv_rows = [r["row"] for r in all_results if r["is_commercial"]]
 
     fieldnames = [
         "vehicle_id", "title", "description", "link", "image_link",
@@ -275,9 +371,9 @@ def main():
         "fuel_type", "transmission", "drivetrain",
     ]
 
-    print(f"\n[3/3] Zapisywanie: Osobowe ({len(osobowe_rows)}), Dostawcze ({len(dostawcze_rows)})")
-    scraper_utils.safe_save_csv(osobowe_rows, fieldnames, OUTPUT_FILE_OSO, min_rows_threshold=1)
-    scraper_utils.safe_save_csv(dostawcze_rows, fieldnames, OUTPUT_FILE_LCV, min_rows_threshold=1)
+    print(f"\n[3/3] Zapisywanie: Osobowe ({len(osobowe_rows)}), Dostawcze ({len(lcv_rows)})")
+    scraper_utils.safe_save_csv(osobowe_rows, fieldnames, OUTPUT_FILE_OSO, min_rows_threshold=0)
+    scraper_utils.safe_save_csv(lcv_rows, fieldnames, OUTPUT_FILE_LCV, min_rows_threshold=0)
     print("Zakończono.")
 
 
