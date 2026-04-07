@@ -1,0 +1,41 @@
+name: SpotiCar Daily Scrape
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  update-spoticar:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests beautifulsoup4 curl_cffi python-dotenv
+      - run: mkdir -p data
+      - name: Run SpotiCar Inventory Scraper
+        run: PYTHONPATH=. python scrapers/spoticar_inventory.py
+      - name: Commit and push
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add data/spoticar_* || true
+          git commit -m "Auto: update SpotiCar feed [skip ci]" || true
+          for i in {1..5}; do
+            git pull --rebase origin master && git push origin master && break || sleep 10
+          done
+      - name: Update SpotiCar Inventory Gist
+        uses: exuanbo/actions-deploy-gist@v1
+        with:
+          token: ${{ secrets.GIST_TOKEN }}
+          gist_id: 4c8887b7fe16f9598658c03f09e44b15
+          file_path: data/spoticar_inventory.csv
