@@ -1,0 +1,47 @@
+name: Fiat Daily Scrape
+
+on:
+  schedule:
+    - cron: '45 */4 * * *'
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  update-fiat:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests beautifulsoup4 python-dotenv
+      - run: mkdir -p data
+      - name: Run Fiat Inventory Scraper
+        run: PYTHONPATH=. python scrapers/fiat_inventory.py
+      - name: Commit and push
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add data/fiat_* || true
+          git commit -m "Auto: update Fiat feeds [skip ci]" || true
+          for i in {1..5}; do
+            git pull --rebase origin master && git push origin master && break || sleep 10
+          done
+      - name: Update Fiat Osobowe Gist
+        uses: exuanbo/actions-deploy-gist@v1
+        with:
+          token: ${{ secrets.GIST_TOKEN }}
+          gist_id: 785c11ed1c27b455acb0e0a5dabc00fb
+          file_path: data/fiat_osobowe_inventory.csv
+      - name: Update Fiat LCV Gist
+        uses: exuanbo/actions-deploy-gist@v1
+        with:
+          token: ${{ secrets.GIST_TOKEN }}
+          gist_id: cb240c966485b6d3767712f3fbcc637a
+          file_path: data/fiat_lcv_inventory.csv
