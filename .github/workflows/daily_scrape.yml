@@ -10,9 +10,15 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+# Nowy run anuluje zawieszony stary — wiszący run nie nadpisze świeżych danych
+concurrency:
+  group: daily-scrape
+  cancel-in-progress: true
+
 jobs:
   update-alfa-ds:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     permissions:
       contents: write
     steps:

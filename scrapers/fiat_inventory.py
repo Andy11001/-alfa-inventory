@@ -1,25 +1,23 @@
+# -*- coding: utf-8 -*-
 """
 Fiat Inventory (Stock) Feed
-- Data source: salon.fiat.pl + salon.fiatprofessional.pl JSON API
-- Output: two CSVs — fiat_osobowe_inventory.csv + fiat_lcv_inventory.csv
+- Źródła: salon.fiat.pl + salon.fiatprofessional.pl JSON API
+- Wspólna logika rodziny salon.*: scrapers/salon_api.py (null-safe —
+  patrz incydent z null w polach dealera, 2026-06-08/11)
+- Wyjście: fiat_osobowe_inventory.csv + fiat_lcv_inventory.csv
 """
-import requests
-import csv
-import json
-import re
-import time
 import os
 import sys
-from datetime import datetime
 
-sys.stdout.reconfigure(encoding="utf-8")
+if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 try:
-    from scrapers import scraper_utils
+    from scrapers import scraper_utils, salon_api
 except ModuleNotFoundError:
     import scraper_utils
+    import salon_api
 
-# --- Config ---
 API_PC = "https://salon.fiat.pl/api/offers/list-fiat.json"
 API_LCV = "https://salon.fiatprofessional.pl/api/offers/list-fiat-professional.json"
 DETAIL_PC = "https://salon.fiat.pl/api/offers/offer-fiat.json?id={uid}"
@@ -48,175 +46,8 @@ def get_body_style(model_name):
     return "Hatchback"
 
 
-def format_address_json(street, city, region, country, post_code=None):
-    # API potrafi zwrócić null zamiast pustego stringa — nie wywalaj się na .upper()
-    street, city, region = street or "", city or "", region or ""
-    country_code = "PL" if country.lower() in ["polska", "pl"] else country
-    addr = {
-        "addr1": street.upper(),
-        "city": city.upper(),
-        "region": region.upper(),
-        "country": country_code.upper(),
-    }
-    if post_code:
-        addr["postal_code"] = post_code
-    return json.dumps(addr, ensure_ascii=False)
-
-
-def fetch_all_offers(api_url):
-    """Fetch all offers from paginated API."""
-    all_offers = []
-    r = scraper_utils.fetch_with_retry(
-        requests, api_url, headers={"User-Agent": "Mozilla/5.0"}
-    )
-    data = r.json()
-    count = data["result"]["info"]["countOfResults"]
-    per_page = data["result"]["info"]["offersPerPage"]
-    total_pages = (count + per_page - 1) // per_page
-    print(f"  {count} ofert ({total_pages} stron)")
-
-    for page in range(1, total_pages + 1):
-        d = scraper_utils.fetch_with_retry(
-            requests, f"{api_url}?page={page}", headers={"User-Agent": "Mozilla/5.0"}
-        ).json()
-        all_offers.extend(d["result"]["list"])
-        print(f"  Strona {page}/{total_pages}: +{len(d['result']['list'])}")
-    return all_offers
-
-
-def _build_row(session, offer, uid, detail_url_tpl, base_url, make_label):
-    """Build a single feed row; returns None if offer has no price."""
-    # Pola z API mogą być jawnym null — .get(k, "") tego nie łapie, stąd `or ""`
-    model = offer.get("model") or ""
-    version = offer.get("version") or ""
-
-    # Detail API
-    street, city, region, post_code = "", "", "", ""
-    lat, lon = "", ""
-    color = "Standard"
-
-    try:
-        r_detail = session.get(detail_url_tpl.format(uid=uid), timeout=10)
-        if r_detail.status_code == 200:
-            d_json = r_detail.json()
-            if "color" in d_json and isinstance(d_json["color"], dict):
-                color = d_json["color"].get("name") or color
-            dealer = d_json.get("dealer") or {}
-            if dealer:
-                street = dealer.get("street") or ""
-                city = dealer.get("city") or ""
-                region = dealer.get("region") or ""
-                post_code = dealer.get("postCode") or ""
-                coords = dealer.get("coordinates") or {}
-                if coords:
-                    lat = coords.get("latitude") or ""
-                    lon = coords.get("longitude") or ""
-    except Exception:
-        pass
-
-    if not city:
-        loc_str = offer.get("localization") or ""
-        parts = loc_str.split(",")
-        city = parts[1].strip() if len(parts) > 1 else parts[0].strip()
-        street = city
-
-    # Model + Version
-    m_up, v_up = model.upper(), version.upper()
-    full_model = model if v_up in m_up else f"{model} {version}"
-
-    # Price
-    price_data = offer.get("price") or {}
-    price_brutto = (price_data.get("final") or {}).get("brutto") or (price_data.get("base") or {}).get("brutto")
-    if not price_brutto:
-        return None
-
-    # Financing
-    fin_info = price_data.get("financing_info") or {}
-    installment = None
-    for fin_key in ["b2b", "l101", "b2c"]:
-        if fin_info.get(fin_key):
-            installment = fin_info[fin_key].get("installment")
-            if installment:
-                break
-
-    # Fuel / transmission
-    eng = offer.get("engineType") or ""
-    if "Hybrid" in eng or "Hybryda" in eng:
-        fuel = "Hybrid"
-    elif "Elektryczn" in eng:
-        fuel = "Electric"
-    elif "Diesel" in eng:
-        fuel = "Diesel"
-    elif "CNG" in eng:
-        fuel = "CNG"
-    else:
-        fuel = "Gasoline"
-
-    trans = "Manual" if "Manual" in eng else "Automatic"
-    drive = "FWD"
-
-    tiktok_title = scraper_utils.format_inventory_title(model, version, installment)
-    tiktok_desc = scraper_utils.format_inventory_description(make_label, model, version, installment, city)
-
-    return {
-        "vehicle_id": uid,
-        "title": tiktok_title,
-        "description": tiktok_desc,
-        "link": f"{base_url}/{uid}",
-        "image_link": offer.get("image"),
-        "make": make_label,
-        "model": model,
-        "year": offer.get("productionYear"),
-        "mileage.value": offer.get("mileage") or 0,
-        "mileage.unit": "KM",
-        "body_style": get_body_style(model),
-        "exterior_color": color,
-        "state_of_vehicle": "New" if (offer.get("mileage") or 0) < 100 else "Used",
-        "price": f"{price_brutto} PLN",
-        "currency": "PLN",
-        "address": format_address_json(street, city, region, "PL", post_code),
-        "latitude": lat,
-        "longitude": lon,
-        "offer_type": "LEASE",
-        "amount_price": f"{installment} PLN" if installment else "",
-        "amount_qualifier": "per month" if installment else "",
-        "fuel_type": fuel,
-        "transmission": trans,
-        "drivetrain": drive,
-    }
-
-
-def process_offers(offers, detail_url_tpl, base_url, make_label="Fiat"):
-    """Process list of offers into feed rows."""
-    session = requests.Session()
-    session.headers.update({"User-Agent": "Mozilla/5.0"})
-    rows = []
-    failed = []  # zbiorczy raport pominiętych ofert (jeden alert, nie per auto)
-
-    for i, offer in enumerate(offers, 1):
-        uid = str(offer.get("uid") or offer.get("id"))
-        if i % 20 == 0:
-            print(f"  Przetwarzanie {i}/{len(offers)}...")
-        try:
-            row = _build_row(session, offer, uid, detail_url_tpl, base_url, make_label)
-        except Exception as e:
-            failed.append(f"{uid}: {e!r}")
-            continue
-        if row:
-            rows.append(row)
-
-    if failed:
-        msg = (f"{make_label}: pominięto {len(failed)}/{len(offers)} ofert "
-               f"(błąd przetwarzania — możliwa zmiana struktury API):\n- "
-               + "\n- ".join(failed[:10]))
-        scraper_utils.logger.warning(msg)
-        if len(failed) > max(3, len(offers) * 0.1):
-            scraper_utils.send_email_alert(
-                f"Degradacja scrapera {make_label}",
-                msg + "\n\nFeed został wygenerowany bez tych ofert.",
-            )
-
-    return list({r["vehicle_id"]: r for r in rows}.values())
+def get_drivetrain(model, version, eng):
+    return "FWD"
 
 
 def main():
@@ -224,31 +55,31 @@ def main():
     print("Fiat Inventory Feed — salon.fiat.pl + fiatprofessional.pl")
     print("=" * 60)
     os.makedirs(OUTPUT_DIR, exist_ok=True)
-
-    fieldnames = [
-        "vehicle_id", "title", "description", "link", "image_link",
-        "make", "model", "year", "mileage.value", "mileage.unit",
-        "body_style", "exterior_color", "state_of_vehicle",
-        "price", "currency", "address", "latitude", "longitude",
-        "offer_type", "amount_price", "amount_qualifier",
-        "fuel_type", "transmission", "drivetrain",
-    ]
+    limit = int(os.environ.get("SALON_LIMIT", "0"))
 
     # --- PC ---
     print("\n[1/4] Fiat Osobowe (PC)...")
-    pc_offers = fetch_all_offers(API_PC)
+    pc_offers = salon_api.fetch_all_offers(API_PC)
+    if limit:
+        pc_offers = pc_offers[:limit]
     print(f"[2/4] Przetwarzanie {len(pc_offers)} osobowych...")
-    pc_rows = process_offers(pc_offers, DETAIL_PC, BASE_URL_PC, "Fiat")
+    pc_rows = salon_api.process_offers(
+        pc_offers, DETAIL_PC, BASE_URL_PC, "Fiat",
+        get_body_style, get_drivetrain)
 
     # --- LCV ---
-    print(f"\n[3/4] Fiat Professional (LCV)...")
-    lcv_offers = fetch_all_offers(API_LCV)
+    print("\n[3/4] Fiat Professional (LCV)...")
+    lcv_offers = salon_api.fetch_all_offers(API_LCV)
+    if limit:
+        lcv_offers = lcv_offers[:limit]
     print(f"[4/4] Przetwarzanie {len(lcv_offers)} dostawczych...")
-    lcv_rows = process_offers(lcv_offers, DETAIL_LCV, BASE_URL_LCV, "Fiat Professional")
+    lcv_rows = salon_api.process_offers(
+        lcv_offers, DETAIL_LCV, BASE_URL_LCV, "Fiat Professional",
+        get_body_style, get_drivetrain)
 
     print(f"\nZapisywanie: PC={len(pc_rows)}, LCV={len(lcv_rows)}")
-    scraper_utils.safe_save_csv(pc_rows, fieldnames, OUTPUT_FILE_PC)
-    scraper_utils.safe_save_csv(lcv_rows, fieldnames, OUTPUT_FILE_LCV)
+    scraper_utils.safe_save_csv(pc_rows, salon_api.FIELDNAMES, OUTPUT_FILE_PC)
+    scraper_utils.safe_save_csv(lcv_rows, salon_api.FIELDNAMES, OUTPUT_FILE_LCV)
     print("Zakończono.")
 
 

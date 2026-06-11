@@ -6,8 +6,6 @@ Peugeot Inventory (Stock) Feed
   bez Selenium — patrz scrapers/sfs_calculator.py
 - Wyjście: peugeot_osobowe_inventory.csv + peugeot_lcv_inventory.csv
 """
-import requests
-import json
 import re
 import os
 import sys
@@ -16,10 +14,11 @@ if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 try:
-    from scrapers import scraper_utils, sfs_calculator
+    from scrapers import scraper_utils, sfs_calculator, wp_shop
 except ModuleNotFoundError:
     import scraper_utils
     import sfs_calculator
+    import wp_shop
 
 API_URL = "https://sklep.peugeot.pl/wp-json/wp/v2/product"
 BASE_URL = "https://sklep.peugeot.pl"
@@ -133,85 +132,14 @@ FIELDNAMES = [
 ]
 
 
-def format_address_json(street, city):
-    region = CITY_TO_REGION.get(city, "Mazowieckie")
-    addr = {
-        "addr1": street.upper(),
-        "city": city.upper(),
-        "region": region.upper(),
-        "country": "PL"
-    }
-    return json.dumps(addr, ensure_ascii=False)
-
-
-def match_dealer_city(raw_city, raw_name):
-    if raw_city:
-        cand = raw_city.strip()
-        for known in DEALER_LOCATIONS:
-            if known.upper() == cand.upper():
-                return known
-        if len(cand) > 1:
-            return cand
-    if raw_name:
-        up = raw_name.upper()
-        for known in DEALER_LOCATIONS:
-            if known.upper() in up:
-                return known
-    return "Warszawa"
-
-
-def download_image(url, filepath):
-    if os.path.exists(filepath):
-        return True
-    try:
-        r = requests.get(url, stream=True, timeout=10,
-                         headers={"User-Agent": "Mozilla/5.0"})
-        if r.status_code == 200:
-            with open(filepath, 'wb') as f:
-                for chunk in r.iter_content(1024):
-                    f.write(chunk)
-            return True
-    except Exception:
-        pass
-    return False
-
-
 def get_model_slug(product):
-    classes = product.get("class_list", {})
-    class_values = classes.values() if isinstance(classes, dict) else classes
-    for cls in class_values:
-        if cls.startswith("product_cat-"):
-            slug = cls.replace("product_cat-", "")
-            if slug not in ["bez-kategorii", "_mto", "456"]:
-                return slug
+    slug = wp_shop.get_model_slug(product, skip_slugs=("bez-kategorii", "_mto", "456"))
+    if slug:
+        return slug
     link_match = re.search(r'/produkt/([^/]+)/', product.get("link") or "")
     if link_match and link_match.group(1) not in ["bez-kategorii"]:
         return link_match.group(1)
     return None
-
-
-def fetch_wp_products():
-    all_products = []
-    page = 1
-    session = requests.Session()
-    session.headers.update({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"})
-    while True:
-        try:
-            r = session.get(f"{API_URL}?per_page=100&page={page}", timeout=15)
-            if r.status_code == 400:
-                print(f"  Koniec wyników (HTTP 400 na stronie {page}).")
-                break
-            r.raise_for_status()
-            data = r.json()
-            if not data:
-                break
-            all_products.extend(data)
-            print(f"  Pobrano stronę {page} ({len(data)} aut, łącznie: {len(all_products)})...")
-            page += 1
-        except Exception as e:
-            print(f"  Koniec wyników / Błąd przy stronie {page}: {e}")
-            break
-    return all_products
 
 
 def build_row(product, rate_info):
@@ -305,13 +233,13 @@ def build_row(product, rate_info):
         ext = ".webp" if image.endswith(".webp") else ".jpg"
         image_filename = f"{vin}_clean{ext}"
         local_image_path = os.path.join(IMAGES_DIR, image_filename)
-        if download_image(image, local_image_path):
+        if wp_shop.download_image(image, local_image_path):
             image = f"{GITHUB_BASE_IMAGE_URL}/{image_filename}"
 
-    detected_city = match_dealer_city(rate_info.get("dealer_city"),
-                                      rate_info.get("dealer_name"))
-    dealer_data = DEALER_LOCATIONS.get(detected_city, DEALER_LOCATIONS["Warszawa"])
-    address_text = format_address_json(dealer_data["street"], detected_city)
+    detected_city, street, lat, lon = wp_shop.resolve_dealer(
+        rate_info.get("dealer_city"), rate_info.get("dealer_name"),
+        DEALER_LOCATIONS, allow_unknown=True)
+    address_text = wp_shop.format_address_json(street, detected_city, CITY_TO_REGION)
 
     tiktok_title = scraper_utils.format_inventory_title(model, trim, clean_installment)
     tiktok_desc = scraper_utils.format_inventory_description(
@@ -334,8 +262,8 @@ def build_row(product, rate_info):
         "price": full_price,
         "currency": "PLN",
         "address": address_text,
-        "latitude": dealer_data.get("lat", "52.2297"),
-        "longitude": dealer_data.get("lon", "21.0122"),
+        "latitude": lat,
+        "longitude": lon,
         "offer_type": "LEASE",
         "amount_price": f"{clean_installment} PLN",
         "amount_qualifier": "per month",
@@ -353,7 +281,7 @@ def main():
     os.makedirs(IMAGES_DIR, exist_ok=True)
 
     print("\n[1/3] Pobieranie listy pojazdów z API sklepu Peugeot...")
-    all_products = fetch_wp_products()
+    all_products = wp_shop.fetch_wp_products(API_URL)
     all_products = [p for p in all_products if get_model_slug(p) and p.get("link")]
     limit = int(os.environ.get("SFS_LIMIT", "0"))
     if limit:

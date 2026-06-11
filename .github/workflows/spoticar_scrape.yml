@@ -8,9 +8,15 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+# Nowy run anuluje zawieszony stary — wiszący run nie nadpisze świeżych danych
+concurrency:
+  group: spoticar-scrape
+  cancel-in-progress: true
+
 jobs:
   update-spoticar:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: write
     steps:

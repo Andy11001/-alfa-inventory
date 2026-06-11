@@ -6,8 +6,6 @@ Opel Inventory (Stock) Feed
   bez Selenium — patrz scrapers/sfs_calculator.py
 - Wyjście: opel_osobowe_inventory.csv + opel_dostawcze_inventory.csv
 """
-import requests
-import json
 import re
 import os
 import sys
@@ -18,10 +16,11 @@ if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 try:
-    from scrapers import scraper_utils, sfs_calculator
+    from scrapers import scraper_utils, sfs_calculator, wp_shop
 except ModuleNotFoundError:
     import scraper_utils
     import sfs_calculator
+    import wp_shop
 
 API_URL = "https://sklep.opel.pl/wp-json/wp/v2/product"
 BASE_URL = "https://sklep.opel.pl"
@@ -63,82 +62,8 @@ FIELDNAMES = [
 ]
 
 
-def format_address_json(street, city):
-    region = CITY_TO_REGION.get(city, "Mazowieckie")
-    addr = {
-        "addr1": street.upper(),
-        "city": city.upper(),
-        "region": region.upper(),
-        "country": "PL"
-    }
-    return json.dumps(addr, ensure_ascii=False)
-
-
-def match_dealer_city(raw_city, raw_name):
-    """Dopasowuje miasto z dataLayer do znanych lokalizacji dealerów."""
-    if raw_city:
-        for known in DEALER_LOCATIONS:
-            if known.upper() == raw_city.strip().upper():
-                return known
-    if raw_name:
-        up = raw_name.upper()
-        for known in DEALER_LOCATIONS:
-            if known.upper() in up:
-                return known
-    return "Warszawa"
-
-
-def download_image_clean(url, filepath):
-    if os.path.exists(filepath):
-        return True
-    try:
-        r = scraper_utils.fetch_with_retry(requests, url, stream=True, timeout=10)
-        if r.status_code == 200:
-            with open(filepath, 'wb') as f:
-                for chunk in r.iter_content(1024):
-                    f.write(chunk)
-            return True
-    except Exception:
-        pass
-    return False
-
-
-def fetch_wp_products():
-    """Pobiera pełną listę produktów z WP API (paginacja do HTTP 400)."""
-    all_products = []
-    page = 1
-    session = requests.Session()
-    session.headers.update({"User-Agent": "Mozilla/5.0"})
-    while True:
-        try:
-            r = session.get(f"{API_URL}?per_page=100&page={page}", timeout=15)
-            if r.status_code == 400:
-                print(f"Koniec wyników (HTTP 400 na stronie {page}).")
-                break
-            r.raise_for_status()
-            data = r.json()
-            if not data:
-                break
-            all_products.extend(data)
-            print(f"Pobrano stronę {page} ({len(data)} aut)...")
-            page += 1
-        except Exception as e:
-            print(f"Błąd pobierania / Koniec wyników przy stronie {page}: {e}")
-            break
-    return all_products
-
-
 def get_model_slug(product):
-    """Slug kategorii (modelu) z class_list — None dla produktów-duchów
-    ("bez-kategorii": skasowane auta, których strony zwracają 500)."""
-    classes = product.get("class_list", {})
-    class_values = classes.values() if isinstance(classes, dict) else classes
-    for cls in class_values:
-        if cls.startswith("product_cat-"):
-            slug = cls.replace("product_cat-", "")
-            if slug not in ["bez-kategorii"]:
-                return slug
-    return None
+    return wp_shop.get_model_slug(product)
 
 
 def build_row(product, rate_info):
@@ -210,13 +135,14 @@ def build_row(product, rate_info):
     if image:
         image_filename = f"{vin}_clean.jpg"
         local_image_path = os.path.join(IMAGES_DIR, image_filename)
-        if download_image_clean(image, local_image_path):
+        if wp_shop.download_image(image, local_image_path):
             image = f"{GITHUB_BASE_IMAGE_URL}/{image_filename}"
 
-    detected_city = match_dealer_city(rate_info.get("dealer_city"),
-                                      rate_info.get("dealer_name"))
-    dealer_data = DEALER_LOCATIONS.get(detected_city, DEALER_LOCATIONS["Warszawa"])
-    address_text = format_address_json(dealer_data["street"], detected_city)
+    # allow_unknown=False: Opel publikuje tylko znane salony (jak dotychczas)
+    detected_city, street, lat, lon = wp_shop.resolve_dealer(
+        rate_info.get("dealer_city"), rate_info.get("dealer_name"),
+        DEALER_LOCATIONS, allow_unknown=False)
+    address_text = wp_shop.format_address_json(street, detected_city, CITY_TO_REGION)
 
     tiktok_title = scraper_utils.format_inventory_title(model, trim, clean_installment)
     tiktok_desc = scraper_utils.format_inventory_description(
@@ -239,8 +165,8 @@ def build_row(product, rate_info):
         "price": full_price,
         "currency": "PLN",
         "address": address_text,
-        "latitude": dealer_data["lat"],
-        "longitude": dealer_data["lon"],
+        "latitude": lat,
+        "longitude": lon,
         "offer_type": "LEASE",
         "amount_price": f"{clean_installment} PLN",
         "amount_qualifier": "per month",
@@ -255,7 +181,7 @@ def main():
     print("Pobieranie listy pojazdów z API sklepu Opel...")
     os.makedirs(IMAGES_DIR, exist_ok=True)
 
-    all_products = fetch_wp_products()
+    all_products = wp_shop.fetch_wp_products(API_URL)
     # Filtr przed pobieraniem stron: produkty bez kategorii to skasowane auta
     # (ich strony zwracają 500) — nie ma sensu ich odpytywać.
     all_products = [p for p in all_products if get_model_slug(p) and p.get("link")]

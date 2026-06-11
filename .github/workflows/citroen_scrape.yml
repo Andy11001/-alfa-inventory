@@ -8,6 +8,11 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+# Nowy run anuluje zawieszony stary — wiszący run nie nadpisze świeżych danych
+concurrency:
+  group: citroen-scrape
+  cancel-in-progress: true
+
 jobs:
   update-citroen:
     runs-on: ubuntu-latest

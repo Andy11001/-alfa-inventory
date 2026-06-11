@@ -1,0 +1,29 @@
+name: Canary — SFS API health check
+
+# Codzienny strażnik: sprawdza, czy protokół kalkulatora SFS nadal działa
+# dla wszystkich 4 marek WP (po 3 auta na markę, ~1 min). Czerwony run =
+# Stellantis coś zmienił — diagnoza: docs/SFS_CALCULATOR.md.
+
+on:
+  schedule:
+    - cron: '10 6 * * *'  # raz dziennie, 06:10 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: canary
+  cancel-in-progress: true
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests python-dotenv
+      - name: Run SFS smoke test (4 brands x 3 cars)
+        env:
+          SFS_DISABLE_SELENIUM_RESCUE: "1"
+        run: PYTHONPATH=. python smoke_test_sfs.py

@@ -10,6 +10,12 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+# Nowy run anuluje zawieszony stary — dokładnie ten scenariusz wystąpił
+# 2026-06-11 (run z 05:03 na Selenium mielił 3 h obok świeżego runu API)
+concurrency:
+  group: peugeot-scrape
+  cancel-in-progress: true
+
 jobs:
   update-peugeot:
     runs-on: ubuntu-latest

@@ -10,8 +10,6 @@ Uwaga: DS domyślnie wyświetla produkt "b2b" (Abonament SimplyDrive B2B),
 nie l101 — skonfigurowane w sfs_calculator.BRAND_CONFIG (zweryfikowane
 empirycznie Selenium vs API).
 """
-import requests
-import json
 import re
 import os
 import sys
@@ -20,10 +18,11 @@ if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 try:
-    from scrapers import scraper_utils, sfs_calculator
+    from scrapers import scraper_utils, sfs_calculator, wp_shop
 except ModuleNotFoundError:
     import scraper_utils
     import sfs_calculator
+    import wp_shop
 
 try:
     from scrapers.image_processor import process_image
@@ -91,33 +90,6 @@ FIELDNAMES = [
 ]
 
 
-def format_address_json(street, city):
-    region = CITY_TO_REGION.get(city, "Mazowieckie")
-    addr = {
-        "addr1": street.upper(),
-        "city": city.upper(),
-        "region": region.upper(),
-        "country": "PL"
-    }
-    return json.dumps(addr, ensure_ascii=False)
-
-
-def match_dealer_city(raw_city, raw_name):
-    if raw_city:
-        cand = raw_city.strip()
-        for known in DEALER_LOCATIONS:
-            if known.upper() == cand.upper():
-                return known
-        if len(cand) > 1:
-            return cand
-    if raw_name:
-        up = raw_name.upper()
-        for known in DEALER_LOCATIONS:
-            if known.upper() in up:
-                return known
-    return "Warszawa"
-
-
 def cleanup_images(current_vins):
     """Usuwa zdjęcia aut, których nie ma już w aktualnej liście ofert."""
     if not os.path.exists(IMAGES_DIR):
@@ -151,30 +123,6 @@ def get_model_slug(product):
         if f"/{slug}/" in link:
             return slug
     return None
-
-
-def fetch_wp_products():
-    all_products = []
-    page = 1
-    session = requests.Session()
-    session.headers.update({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"})
-    while True:
-        try:
-            r = session.get(f"{API_URL}?per_page=100&page={page}", timeout=15)
-            if r.status_code == 400:
-                print(f"Koniec wyników (HTTP 400 na stronie {page}).")
-                break
-            r.raise_for_status()
-            data = r.json()
-            if not data:
-                break
-            all_products.extend(data)
-            print(f"Pobrano stronę {page} ({len(data)} aut)...")
-            page += 1
-        except Exception as e:
-            print(f"Błąd pobierania / Koniec wyników przy stronie {page}: {e}")
-            break
-    return all_products
 
 
 def build_row(product, rate_info):
@@ -247,10 +195,10 @@ def build_row(product, rate_info):
         except Exception as e:
             print(f"Błąd renderingu zdjęcia {vin}: {e}")
 
-    detected_city = match_dealer_city(rate_info.get("dealer_city"),
-                                      rate_info.get("dealer_name"))
-    dealer_data = DEALER_LOCATIONS.get(detected_city, DEALER_LOCATIONS["Warszawa"])
-    address_text = format_address_json(dealer_data["street"], detected_city)
+    detected_city, street, lat, lon = wp_shop.resolve_dealer(
+        rate_info.get("dealer_city"), rate_info.get("dealer_name"),
+        DEALER_LOCATIONS, allow_unknown=True)
+    address_text = wp_shop.format_address_json(street, detected_city, CITY_TO_REGION)
 
     tiktok_title = scraper_utils.format_inventory_title(model, trim, clean_installment)
     tiktok_desc = scraper_utils.format_inventory_description("DS Automobiles", model, trim, clean_installment)
@@ -272,8 +220,8 @@ def build_row(product, rate_info):
         "price": full_price,
         "currency": "PLN",
         "address": address_text,
-        "latitude": dealer_data["lat"],
-        "longitude": dealer_data["lon"],
+        "latitude": lat,
+        "longitude": lon,
         "offer_type": "LEASE",
         "amount_price": f"{clean_installment} PLN",
         "amount_qualifier": "per month",
@@ -287,7 +235,7 @@ def main():
     print("Pobieranie listy pojazdów z API sklepu DS...")
     os.makedirs(IMAGES_DIR, exist_ok=True)
 
-    all_products = fetch_wp_products()
+    all_products = wp_shop.fetch_wp_products(API_URL)
     all_products = [p for p in all_products if get_model_slug(p) and p.get("link")]
     limit = int(os.environ.get("SFS_LIMIT", "0"))
     if limit:
