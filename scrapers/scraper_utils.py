@@ -154,13 +154,17 @@ def create_backup(file_path, logger_instance=None):
     except Exception as e:
         log.error(f"Nie udało się utworzyć kopii zapasowej: {e}")
 
-def safe_save_csv(data_rows, fieldnames, output_file, min_rows_threshold=5):
+def safe_save_csv(data_rows, fieldnames, output_file, min_rows_threshold=5, no_shrink=False):
     """
     Bezpieczny zapis pliku CSV:
     1. Sprawdza czy liczba wierszy > min_rows_threshold.
     2. Zapisuje do pliku tymczasowego.
     3. Tworzy backup starego pliku.
     4. Podmienia plik docelowy (atomic write).
+
+    no_shrink=True: nie nadpisuj istniejącego pliku, jeśli nowy zestaw ma MNIEJ
+    wierszy niż obecny (używane przy zapisie częściowym po sygnale/timeoucie —
+    nigdy nie zamieniamy pełnego feedu na niekompletny).
     """
     if len(data_rows) < min_rows_threshold:
         msg = f"ZBYT MAŁO DANYCH! Próbowano zapisać {len(data_rows)} wierszy (wymagane min. {min_rows_threshold}). Zapis anulowany."
@@ -173,7 +177,11 @@ def safe_save_csv(data_rows, fieldnames, output_file, min_rows_threshold=5):
         try:
             with open(output_file, 'r', encoding='utf-8') as f:
                 old_lines = sum(1 for _ in f) - 1 # minus header
-            
+
+            if no_shrink and old_lines > len(data_rows):
+                logger.info(f"[no_shrink] Pomijam zapis {output_file}: {len(data_rows)} < {old_lines} istniejących wierszy (zachowuję pełny feed).")
+                return False
+
             if old_lines > 0:
                 drop_ratio = (old_lines - len(data_rows)) / old_lines
                 if drop_ratio > 0.6: # Jeśli spadek o więcej niż 60%

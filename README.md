@@ -1,92 +1,61 @@
-# Integracja Feedów Alfa Romeo i DS Automobiles
+# Feedy samochodowe Stellantis (TikTok/Meta Automotive Ads)
 
-Projekt ten służy do automatycznego pobierania, przetwarzania i udostępniania danych o inwentarzu oraz modelach samochodów marek **Alfa Romeo** i **DS Automobiles**. System składa się ze skryptów scrapujących, które pobierają dane i zapisują je w formacie CSV.
+Automatyczne pobieranie inwentarza i feedów modelowych dla marek:
+**Alfa Romeo, DS, Opel, Peugeot, Citroën, Fiat (+ Professional), Jeep,
+SpotiCar, Leapmotor**. Wyniki trafiają do `data/*.csv`, a GitHub Actions
+publikuje je do Gistów co 4–6 h.
 
-## Funkcjonalności
+## Architektura scrapowania (od czerwca 2026 — bez Selenium w inwentarzach)
 
-- **Pobieranie inwentarza**: Automatyczne pobieranie ofert sprzedaży samochodów z oficjalnych stron salonów.
-- **Generowanie feedów modelowych**: Tworzenie zestawień modeli wraz ze specyfikacjami i zdjęciami.
-- **Automatyczna deklinacja modeli**: Inteligentny system dobierający formę "dostępny/dostępna" w zależności od nazwy modelu (np. Alfa Romeo Giulia *dostępna*, ale DS 4 *dostępny*).
-- **Weryfikacja danych**: Sprawdzanie poprawności linków do zdjęć i innych kluczowych danych.
-- **Eksport danych**: Zapis przetworzonych danych w formacie CSV.
+| Źródło | Marki | Metoda |
+|--------|-------|--------|
+| `salon.*.pl` JSON API | Alfa, Jeep, Fiat, Fiat Prof. | czyste API (rata w `financing_info`) |
+| `sklep.*.pl` WordPress | Opel, Citroën, Peugeot, DS | WP JSON API + **bezpośrednie API kalkulatora SFS** |
+| `spoticar.pl` | SpotiCar | curl_cffi (TLS impersonation, omija Akamai) |
 
-## Automatyzacja Językowa
+Sklepy WordPress nie podają raty w API — liczy ją kalkulator Stellantis
+Financial Services w przeglądarce. Zamiast uruchamiać Chrome/Selenium
+(godziny działania, OOM na GitHub Actions), `scrapers/sfs_calculator.py`
+parsuje konfigurację kalkulatora z HTML strony i woła API SFS bezpośrednio,
+batchami. **Pełny run = minuty zamiast godzin, ~0 dodatkowego RAM.**
+Szczegóły protokołu: [docs/SFS_CALCULATOR.md](docs/SFS_CALCULATOR.md).
 
-System zawiera heurystykę (`scraper_utils.py`), która automatycznie rozpoznaje rodzaj gramatyczny nowych modeli samochodów:
-- **Marka DS**: Domyślnie traktowana jako rodzaj męski ("Ten DS" -> *dostępny*).
-- **Marka Alfa Romeo**: Zawsze traktowana jako rodzaj żeński ("Ta Alfa" -> *dostępna*). Dotyczy to wszystkich modeli (Giulia, Stelvio, Tonale, Junior, Spider itd.).
+Selenium (`selenium_helper.py`) zostaje wyłącznie jako automatyczna ścieżka
+awaryjna, gdy pokrycie rat z API spadnie poniżej progu — dlatego workflowy
+nadal instalują Chrome.
 
-Dzięki temu nowe modele (np. hipotetyczna "Alfa Romeo Milano" czy "Alfa Romeo King") będą poprawnie obsługiwane bez konieczności ręcznej aktualizacji kodu.
+## Samonaprawialność
 
-## Wymagania
-
-- Python 3.8+
-- Google Chrome (wymagany dla Selenium)
-
-Zależności Python (znajdują się w `requirements.txt`):
-- `requests`
-- `pandas`
-- `beautifulsoup4`
-- `selenium`
-- `Pillow`
-- `python-dotenv`
-
-## Instalacja
-
-1. Sklonuj repozytorium lub pobierz pliki projektu.
-2. Zainstaluj wymagane biblioteki:
-   ```bash
-   pip install -r requirements.txt
-   ```
+- wielowariantowe regexy + domyślne parametry marki, gdy strona się zmieni,
+- retry z backoffem i dzielenie batchy przy błędach API,
+- awaryjny Selenium przy niskim pokryciu (limitowany — bez nawrotu OOM),
+- `safe_save_csv`: zapis atomowy, backup, próg minimalnej liczby wierszy,
+  ochrona przed nadpisaniem pełnego feedu niekompletnym (`no_shrink`),
+  alert przy spadku liczby ofert > 60%,
+- zbiorcze alerty e-mail przy każdej degradacji (sekrety `EMAIL_*`).
 
 ## Uruchomienie
 
-Skrypty znajdują się w katalogu `scrapers/`. Można je uruchamiać bezpośrednio z wiersza poleceń.
-
-### Pobieranie inwentarza
-
-**Alfa Romeo:**
 ```bash
-python scrapers/alfa_inventory.py
+pip install -r requirements.txt
+PYTHONPATH=. python scrapers/opel_inventory.py      # i analogicznie pozostałe
 ```
 
-**DS Automobiles:**
-```bash
-python scrapers/ds_inventory.py
-```
+Przydatne zmienne: `SFS_LIMIT=20` (szybki test na 20 autach),
+`SFS_DISABLE_SELENIUM_RESCUE=1` (lokalnie bez Chrome). Pełna lista w
+[docs/SFS_CALCULATOR.md](docs/SFS_CALCULATOR.md).
 
-### Generowanie feedów modelowych
+## Struktura
 
-**Alfa Romeo:**
-```bash
-python scrapers/alfa_model.py
-```
+- `scrapers/sfs_calculator.py` — klient kalkulatora SFS (serce projektu),
+- `scrapers/*_inventory.py` — feedy stockowe (auta z VIN),
+- `scrapers/*_model.py` — feedy modelowe (cenniki/konfigurator),
+- `scrapers/scraper_utils.py` — zapis CSV, alerty, retry, formaty tytułów,
+- `scrapers/selenium_helper.py` — ścieżka awaryjna (Chrome headless),
+- `.github/workflows/*.yml` — harmonogramy + publikacja Gistów,
+- `data/` — wynikowe CSV + zdjęcia, `archive/` — backupy z ostatnich runów.
 
-**DS Automobiles:**
-```bash
-python scrapers/ds_model.py
-```
+## Automatyzacja językowa
 
-### Weryfikacja danych
-
-```bash
-python scrapers/validator.py
-```
-
-Po uruchomieniu skryptów, przetworzone pliki CSV pojawią się w katalogu `data/`.
-
-### Opis plików i katalogów
-
-- **`scrapers/`**: Katalog zawierający logikę pobierania danych.
-  - `alfa_inventory.py`: Pobiera inwentarz Alfa Romeo.
-  - `ds_inventory.py`: Pobiera inwentarz DS Automobiles.
-  - `alfa_model.py`: Generuje feed modelowy dla Alfa Romeo.
-  - `ds_model.py`: Generuje feed modelowy dla DS Automobiles.
-  - `validator.py`: Narzędzie do weryfikacji danych.
-  - `scraper_utils.py`: Funkcje pomocnicze (logowanie, obsługa błędów, zapis plików, **logika językowa**).
-- **`data/`**: Katalog, w którym zapisywane są wyniki działania skryptów (pliki CSV).
-
-## Uwagi
-
-- Skrypty wykorzystują połączenia sieciowe do zewnętrznych API i stron internetowych. Upewnij się, że masz stabilne połączenie internetowe.
-- W przypadku problemów z Selenium, upewnij się, że masz zainstalowaną najnowszą wersję przeglądarki Chrome.
+`scraper_utils.get_availability_word()` dobiera "dostępny/dostępna" po marce
+(DS → męski, Alfa Romeo → żeński) — nowe modele nie wymagają zmian w kodzie.

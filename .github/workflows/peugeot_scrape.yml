@@ -13,6 +13,8 @@ env:
 jobs:
   update-peugeot:
     runs-on: ubuntu-latest
+    # API SFS zamiast Selenium — Chrome zostaje tylko dla ścieżki awaryjnej.
+    timeout-minutes: 45
     permissions:
       contents: write
     steps:

@@ -1,15 +1,27 @@
+# -*- coding: utf-8 -*-
+"""
+Opel Inventory (Stock) Feed
+- Lista produktów: WordPress JSON API (sklep.opel.pl)
+- Raty B2B + miasto dealera: bezpośrednie API kalkulatora SFS (sfs_calculator),
+  bez Selenium — patrz scrapers/sfs_calculator.py
+- Wyjście: opel_osobowe_inventory.csv + opel_dostawcze_inventory.csv
+"""
 import requests
-import csv
 import json
 import re
-import time
 import os
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import sys
+import signal
+import threading
+
+if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 try:
-    from scrapers import scraper_utils
+    from scrapers import scraper_utils, sfs_calculator
 except ModuleNotFoundError:
     import scraper_utils
+    import sfs_calculator
 
 API_URL = "https://sklep.opel.pl/wp-json/wp/v2/product"
 BASE_URL = "https://sklep.opel.pl"
@@ -42,6 +54,15 @@ DEALER_LOCATIONS = {
     "Bielsko-Biała": {"lat": "49.8225", "lon": "19.0444", "street": "ul. Warszawska 15"}
 }
 
+FIELDNAMES = [
+    "vehicle_id", "title", "description", "link", "image_link",
+    "make", "model", "year", "mileage.value", "mileage.unit",
+    "body_style", "exterior_color", "state_of_vehicle",
+    "price", "currency", "address", "latitude", "longitude",
+    "offer_type", "amount_price", "amount_qualifier", "fuel_type", "transmission", "drivetrain"
+]
+
+
 def format_address_json(street, city):
     region = CITY_TO_REGION.get(city, "Mazowieckie")
     addr = {
@@ -51,6 +72,21 @@ def format_address_json(street, city):
         "country": "PL"
     }
     return json.dumps(addr, ensure_ascii=False)
+
+
+def match_dealer_city(raw_city, raw_name):
+    """Dopasowuje miasto z dataLayer do znanych lokalizacji dealerów."""
+    if raw_city:
+        for known in DEALER_LOCATIONS:
+            if known.upper() == raw_city.strip().upper():
+                return known
+    if raw_name:
+        up = raw_name.upper()
+        for known in DEALER_LOCATIONS:
+            if known.upper() in up:
+                return known
+    return "Warszawa"
+
 
 def download_image_clean(url, filepath):
     if os.path.exists(filepath):
@@ -62,35 +98,66 @@ def download_image_clean(url, filepath):
                 for chunk in r.iter_content(1024):
                     f.write(chunk)
             return True
-    except Exception as e:
+    except Exception:
         pass
     return False
 
-def process_product(product, index, total_count, driver):
-    try:
-        from scrapers.selenium_helper import get_b2b_price_selenium
-    except:
-        from selenium_helper import get_b2b_price_selenium
-    
+
+def fetch_wp_products():
+    """Pobiera pełną listę produktów z WP API (paginacja do HTTP 400)."""
+    all_products = []
+    page = 1
+    session = requests.Session()
+    session.headers.update({"User-Agent": "Mozilla/5.0"})
+    while True:
+        try:
+            r = session.get(f"{API_URL}?per_page=100&page={page}", timeout=15)
+            if r.status_code == 400:
+                print(f"Koniec wyników (HTTP 400 na stronie {page}).")
+                break
+            r.raise_for_status()
+            data = r.json()
+            if not data:
+                break
+            all_products.extend(data)
+            print(f"Pobrano stronę {page} ({len(data)} aut)...")
+            page += 1
+        except Exception as e:
+            print(f"Błąd pobierania / Koniec wyników przy stronie {page}: {e}")
+            break
+    return all_products
+
+
+def get_model_slug(product):
+    """Slug kategorii (modelu) z class_list — None dla produktów-duchów
+    ("bez-kategorii": skasowane auta, których strony zwracają 500)."""
+    classes = product.get("class_list", {})
+    class_values = classes.values() if isinstance(classes, dict) else classes
+    for cls in class_values:
+        if cls.startswith("product_cat-"):
+            slug = cls.replace("product_cat-", "")
+            if slug not in ["bez-kategorii"]:
+                return slug
+    return None
+
+
+def build_row(product, rate_info):
+    """Buduje wiersz feedu z danych WP + wyniku kalkulatora SFS."""
     pid = str(product.get("id"))
     link = product.get("link")
     title_raw = product.get("title", {}).get("rendered", "")
     vin = title_raw if len(title_raw) == 17 else f"OPEL-{pid}"
-    
+
     classes = product.get("class_list", {})
-    model_slug = ""
-    for cls in classes.values():
-        if cls.startswith("product_cat-"):
-            model_slug = cls.replace("product_cat-", "")
-            if model_slug not in ["bez-kategorii"]:
-                break
-            
-    if not model_slug or model_slug == "bez-kategorii":
+    class_values = classes.values() if isinstance(classes, dict) else classes
+
+    model_slug = get_model_slug(product)
+    if not model_slug:
         return None
-        
+
     model = model_slug.replace("-", " ").title()
     is_commercial = any(d in model_slug for d in DOS_CATEGORIES)
-    
+
     color = "Standard"
     fuel = "Gasoline"
     trans = "Manual"
@@ -98,7 +165,7 @@ def process_product(product, index, total_count, driver):
     trim = ""
     year = "2024"
 
-    for cls in classes.values():
+    for cls in class_values:
         if cls.startswith("pa_kolor-"):
             color = cls.replace("pa_kolor-", "").replace("-", " ").title()
         elif cls.startswith("pa_typ-paliwa-"):
@@ -111,77 +178,49 @@ def process_product(product, index, total_count, driver):
         elif cls.startswith("pa_poziom-wyposazenia-"):
             trim = cls.replace("pa_poziom-wyposazenia-", "").replace("-", " ").title()
         elif cls.startswith("pa_rok-produkcji-"):
-             year = cls.replace("pa_rok-produkcji-", "")
-             if len(year) != 4: year = "2024"
-    
-    full_price = ""
-    yoast_desc = product.get("yoast_head_json", {}).get("description", "")
-    price_match = re.search(r'([\d\s]+)\s*z\ł', yoast_desc)
-    if price_match:
-        full_price = f"{re.sub(r'[^0-9]', '', price_match.group(1))} PLN"
+            yr = cls.replace("pa_rok-produkcji-", "")
+            if len(yr) == 4 and yr.isdigit():
+                year = yr
 
-    installment = ""
-    detected_city = "Warszawa"  # Default fallback
-    try:
-        b2b_price = get_b2b_price_selenium(link, driver=driver)
-        if b2b_price:
-            installment = b2b_price
-            print(f"  [{index}/{total_count}] {vin}: Rata = {b2b_price} PLN")
-        else:
-              print(f"  [{index}/{total_count}] {vin}: Brak raty B2B")
-        
-        # Extract dealer city from page dataLayer (edealerCity)
-        try:
-            page_source = driver.page_source
-            city_match = re.search(r'"edealerCity"\s*:\s*"([^"]+)"', page_source)
-            if city_match and city_match.group(1):
-                candidate = city_match.group(1)
-                if candidate in DEALER_LOCATIONS:
-                    detected_city = candidate
-                else:
-                    # Try case-insensitive match
-                    for known_city in DEALER_LOCATIONS.keys():
-                        if known_city.upper() == candidate.upper():
-                            detected_city = known_city
-                            break
-            else:
-                # Fallback: try edealerName
-                name_match = re.search(r'"edealerName"\s*:\s*"([^"]+)"', page_source)
-                if name_match:
-                    dealer_name = name_match.group(1).upper()
-                    for city in DEALER_LOCATIONS.keys():
-                        if city.upper() in dealer_name:
-                            detected_city = city
-                            break
-        except Exception:
-            pass  # Keep default "Warszawa"
-        
-    except Exception as e:
-         print(f"  [{index}/{total_count}] {vin}: Err Selenium {e}")
-    clean_installment = installment.replace("PLN", "").replace(" ", "").strip()
-    if not clean_installment or not clean_installment.isdigit() or int(clean_installment) <= 0:
+    if rate_info and rate_info.get("year"):
+        year = rate_info["year"]
+
+    # Rata z kalkulatora SFS — bez niej oferta nie wchodzi do feedu (jak dotychczas)
+    if not rate_info or not rate_info.get("installment"):
         return None
-        
-    if not full_price: full_price = "150000 PLN"
-    
-    amount_price_final = f"{clean_installment} PLN"
+    clean_installment = str(rate_info["installment"])
+
+    # Cena: attachOffer (dokładna) -> opis yoast -> default
+    full_price = ""
+    gross = rate_info.get("gross_price")
+    if isinstance(gross, (int, float)) and gross > 10000:
+        full_price = f"{int(round(gross))} PLN"
+    if not full_price:
+        yoast_desc = product.get("yoast_head_json", {}).get("description", "")
+        price_match = re.search(r'([\d\s]+)\s*zł', yoast_desc)
+        if price_match:
+            full_price = f"{re.sub(r'[^0-9]', '', price_match.group(1))} PLN"
+    if not full_price:
+        full_price = "150000 PLN"
 
     image = ""
     imgs = product.get("yoast_head_json", {}).get("og_image", [])
     if imgs:
         image = imgs[0].get("url")
-
     if image:
         image_filename = f"{vin}_clean.jpg"
         local_image_path = os.path.join(IMAGES_DIR, image_filename)
         if download_image_clean(image, local_image_path):
             image = f"{GITHUB_BASE_IMAGE_URL}/{image_filename}"
 
+    detected_city = match_dealer_city(rate_info.get("dealer_city"),
+                                      rate_info.get("dealer_name"))
     dealer_data = DEALER_LOCATIONS.get(detected_city, DEALER_LOCATIONS["Warszawa"])
     address_text = format_address_json(dealer_data["street"], detected_city)
 
     tiktok_title = scraper_utils.format_inventory_title(model, trim, clean_installment)
-    tiktok_desc = scraper_utils.format_inventory_description("Opel", model, trim, clean_installment, detected_city)
+    tiktok_desc = scraper_utils.format_inventory_description(
+        "Opel", model, trim, clean_installment, detected_city)
 
     row = {
         "vehicle_id": vin,
@@ -203,121 +242,70 @@ def process_product(product, index, total_count, driver):
         "latitude": dealer_data["lat"],
         "longitude": dealer_data["lon"],
         "offer_type": "LEASE",
-        "amount_price": amount_price_final,
+        "amount_price": f"{clean_installment} PLN",
         "amount_qualifier": "per month",
         "fuel_type": fuel,
         "transmission": trans,
         "drivetrain": drive
     }
-    
     return {"row": row, "is_commercial": is_commercial}
 
-def process_chunk(chunk, chunk_id, total_count, base_index):
-    try:
-        from scrapers.selenium_helper import init_driver
-    except:
-        from selenium_helper import init_driver
-        
-    driver = None
-    results = []
-    try:
-        driver = init_driver()
-        for i, p in enumerate(chunk):
-            if i > 0 and i % 50 == 0:
-                print(f"  [Chunk {chunk_id}] Restarting driver to free RAM...")
-                try: driver.quit()
-                except: pass
-                driver = init_driver()
-                
-            real_index = base_index + i + 1
-            res = process_product(p, real_index, total_count, driver)
-            if res:
-                results.append(res)
-            try: driver.delete_all_cookies()
-            except: pass
-    except Exception as e:
-        print(f"Chunk {chunk_id} error: {e}")
-    finally:
-        if driver:
-            try: driver.quit()
-            except: pass
-            
-    return results
 
 def main():
     print("Pobieranie listy pojazdów z API sklepu Opel...")
     os.makedirs(IMAGES_DIR, exist_ok=True)
-    
-    all_products = []
-    page = 1
-    session = requests.Session()
-    session.headers.update({"User-Agent": "Mozilla/5.0"})
 
-    while True:
-        try:
-            # Użycie bezpośredniego żądania, aby HTTP 400 nie triggerowało powtórek na końcu wyników
-            url = f"{API_URL}?per_page=100&page={page}"
-            r = session.get(url, timeout=15)
-            
-            if r.status_code == 400:
-                print(f"Koniec wyników (HTTP 400 na stronie {page}).")
-                break
-                
-            r.raise_for_status()
-            data = r.json()
-            if not data:
-                break
-            all_products.extend(data)
-            print(f"Pobrano stronę {page} ({len(data)} aut)...")
-            page += 1
-        except Exception as e:
-            print(f"Błąd pobierania / Koniec wyników przy stronie {page}: {e}")
-            break
-
+    all_products = fetch_wp_products()
+    # Filtr przed pobieraniem stron: produkty bez kategorii to skasowane auta
+    # (ich strony zwracają 500) — nie ma sensu ich odpytywać.
+    all_products = [p for p in all_products if get_model_slug(p) and p.get("link")]
+    limit = int(os.environ.get("SFS_LIMIT", "0"))
+    if limit:
+        all_products = all_products[:limit]
     total = len(all_products)
-    print(f"Łącznie znaleziono {len(all_products)} ofert, procesuję {total} ofert Opla. Pobieranie szczegółów (wielowątkowo)...")
+    print(f"Po odfiltrowaniu duchów: {total} ofert. Pobieranie rat przez API SFS...")
 
+    # Współdzielone akumulatory: handler SIGTERM zrzuca częściowy wynik,
+    # żeby timeout/cancel na CI nie wyrzucał całej pracy.
     osobowe_rows = []
     dostawcze_rows = []
+    rows_lock = threading.RLock()
 
-    MAX_WORKERS = 4
-    
-    chunk_size = (total + MAX_WORKERS - 1) // MAX_WORKERS
-    chunks = [all_products[i * chunk_size:(i + 1) * chunk_size] for i in range(MAX_WORKERS)]
+    def save_all(reason, no_shrink, min_rows):
+        with rows_lock:
+            oso = list(osobowe_rows)
+            dos = list(dostawcze_rows)
+        print(f"\nZapisywanie ({reason}): Osobowe ({len(oso)}), Dostawcze ({len(dos)})")
+        scraper_utils.safe_save_csv(oso, FIELDNAMES, OUTPUT_FILE_OSO, min_rows_threshold=min_rows, no_shrink=no_shrink)
+        scraper_utils.safe_save_csv(dos, FIELDNAMES, OUTPUT_FILE_DOS, min_rows_threshold=min_rows, no_shrink=no_shrink)
 
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        futures = []
-        base_idx = 0
-        for i, chunk in enumerate(chunks):
-            futures.append(executor.submit(process_chunk, chunk, i+1, total, base_idx))
-            base_idx += len(chunk)
-        
-        for future in as_completed(futures):
-            try:
-                res_list = future.result()
-                if res_list:
-                    for result in res_list:
-                        if result["is_commercial"]:
-                            dostawcze_rows.append(result["row"])
-                        else:
-                            osobowe_rows.append(result["row"])
-            except Exception as e:
-                print(f"Błąd wątku: {e}")
+    def handle_term(signum, frame):
+        print(f"\n⚠️  Sygnał {signum} — zapis częściowych wyników i wyjście.")
+        save_all(reason=f"partial/sig{signum}", no_shrink=True, min_rows=0)
+        os._exit(0)
 
-    fieldnames = [
-        "vehicle_id", "title", "description", "link", "image_link",
-        "make", "model", "year", "mileage.value", "mileage.unit",
-        "body_style", "exterior_color", "state_of_vehicle",
-        "price", "currency", "address", "latitude", "longitude",
-        "offer_type", "amount_price", "amount_qualifier", "fuel_type", "transmission", "drivetrain"
-    ]
+    signal.signal(signal.SIGTERM, handle_term)
+    signal.signal(signal.SIGINT, handle_term)
 
-    print(f"\nZapisywanie: Osobowe ({len(osobowe_rows)}), Dostawcze ({len(dostawcze_rows)})")
-    
-    scraper_utils.safe_save_csv(osobowe_rows, fieldnames, OUTPUT_FILE_OSO)
-    scraper_utils.safe_save_csv(dostawcze_rows, fieldnames, OUTPUT_FILE_DOS)
-    
+    # Raty + miasta dealera jednym przebiegiem (HTTP, batchowane) — bez Selenium.
+    links = [p.get("link") for p in all_products if p.get("link")]
+    rates, stats = sfs_calculator.get_inventory_rates("opel", links)
+
+    print(f"\nBudowanie feedu ({len(rates)} aut z ratą)...")
+    for i, product in enumerate(all_products, 1):
+        res = build_row(product, rates.get(product.get("link")))
+        if res:
+            with rows_lock:
+                if res["is_commercial"]:
+                    dostawcze_rows.append(res["row"])
+                else:
+                    osobowe_rows.append(res["row"])
+        if i % 100 == 0:
+            print(f"  Przetworzono {i}/{total}...")
+
+    save_all(reason="complete", no_shrink=False, min_rows=5)
     print("Zakończono sukcesem.")
+
 
 if __name__ == "__main__":
     main()

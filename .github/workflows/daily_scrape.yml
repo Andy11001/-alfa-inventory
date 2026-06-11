@@ -111,6 +111,9 @@ jobs:
 
   update-opel:
     runs-on: ubuntu-latest
+    # Scraper używa API SFS zamiast Selenium (sfs_calculator) — pełny run to
+    # minuty; 45 min to zapas na pierwsze pobranie zdjęć + awaryjny Selenium.
+    timeout-minutes: 45
     permissions:
       contents: write
     steps:

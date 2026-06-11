@@ -1,12 +1,30 @@
+# -*- coding: utf-8 -*-
+"""
+DS Automobiles Inventory (Stock) Feed
+- Lista produktów: WordPress JSON API (sklep.dsautomobiles.pl)
+- Raty + miasto dealera + cena + rok: bezpośrednie API kalkulatora SFS
+  (sfs_calculator), bez Selenium — patrz scrapers/sfs_calculator.py
+- Wyjście: ds_inventory.csv (+ zdjęcia z ramką w kolorze nadwozia)
+
+Uwaga: DS domyślnie wyświetla produkt "b2b" (Abonament SimplyDrive B2B),
+nie l101 — skonfigurowane w sfs_calculator.BRAND_CONFIG (zweryfikowane
+empirycznie Selenium vs API).
+"""
 import requests
-import csv
 import json
 import re
-import time
 import os
-import scraper_utils
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from bs4 import BeautifulSoup
+import sys
+
+if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
+try:
+    from scrapers import scraper_utils, sfs_calculator
+except ModuleNotFoundError:
+    import scraper_utils
+    import sfs_calculator
+
 try:
     from scrapers.image_processor import process_image
 except ModuleNotFoundError:
@@ -17,11 +35,10 @@ OUTPUT_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "
 IMAGES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "images")
 GITHUB_BASE_IMAGE_URL = "https://raw.githubusercontent.com/Andy11001/-alfa-inventory/master/data/images"
 
-# Mapa modeli (class_list -> ładna nazwa)
 MODEL_MAP = {
     "ds-3": "DS 3",
     "ds-4": "DS 4",
-    "n4": "N°4", 
+    "n4": "N°4",
     "ds-7": "DS 7",
     "ds-9": "DS 9",
     "n7": "N°7",
@@ -52,17 +69,6 @@ COLOR_CONFIG = {
     "Lazurite Blue": (0, 107, 125)
 }
 
-def format_address_json(street, city):
-    region = CITY_TO_REGION.get(city, "Mazowieckie")
-    addr = {
-        "addr1": street.upper(),
-        "city": city.upper(),
-        "region": region.upper(),
-        "country": "PL"
-    }
-    return json.dumps(addr, ensure_ascii=False)
-
-# Hardcoded Dealer Locations (Lat/Lon + Street Address)
 DEALER_LOCATIONS = {
     "Kraków": {"lat": "50.0931", "lon": "19.9238", "street": "ul. Opolska 9"},
     "Warszawa": {"lat": "52.2084", "lon": "20.9412", "street": "Al. Krakowska 206"},
@@ -76,92 +82,49 @@ DEALER_LOCATIONS = {
     "Bielsko-Biała": {"lat": "49.8225", "lon": "19.0444", "street": "ul. Warszawska 15"}
 }
 
-def clean_html_text(text):
-    if not text: return ""
-    return re.sub(r'\s+', ' ', text).strip()
+FIELDNAMES = [
+    "vehicle_id", "title", "description", "link", "image_link",
+    "make", "model", "year", "mileage.value", "mileage.unit",
+    "body_style", "exterior_color", "state_of_vehicle",
+    "price", "currency", "address", "latitude", "longitude",
+    "offer_type", "amount_price", "amount_qualifier", "fuel_type", "transmission", "drivetrain"
+]
 
-def parse_detail_page(url, session):
-    """Pobiera stronę produktu i wyciąga cenę, dealera oraz rok produkcji."""
-    price = ""
-    address_text = ""
-    dynamic_year = "2024" # Default updated
-    lat, lon = "", ""
-    
-    try:
-        # Użycie bezpiecznego pobeirania
-        r = scraper_utils.fetch_with_retry(session, url, timeout=10)
-        html_content = r.text
-        soup = BeautifulSoup(r.content, 'html.parser')
-        
-        # --- 1. Cena (Full Price) ---
-        price_tag = soup.find("p", class_="price")
-        if price_tag:
-            ins_tag = price_tag.find("ins")
-            if ins_tag:
-                raw_price = ins_tag.get_text(strip=True)
-            else:
-                raw_price = price_tag.get_text(strip=True)
-            
-            clean_digits = re.sub(r'[^\d]', '', raw_price)
-            if clean_digits:
-                price = f"{clean_digits} PLN"
 
-        if not price:
-            matches = re.findall(r'([\d\s\.]+)\s*z\ł', html_content)
-            for m in matches:
-                clean = re.sub(r'[^\d]', '', m)
-                if len(clean) >= 5: 
-                    price = f"{clean} PLN"
-                    break
-        
-        # --- 2. Dealer / Lokalizacja / Rok ---
-        text_content = soup.get_text(" ", strip=True)
-        detected_city = "Warszawa" # Default fallback
+def format_address_json(street, city):
+    region = CITY_TO_REGION.get(city, "Mazowieckie")
+    addr = {
+        "addr1": street.upper(),
+        "city": city.upper(),
+        "region": region.upper(),
+        "country": "PL"
+    }
+    return json.dumps(addr, ensure_ascii=False)
 
-        # Try to extract city from dataLayer (more reliable)
-        city_match = re.search(r'"edealerCity"\s*:\s*"([^"]+)"', html_content)
-        if city_match and city_match.group(1):
-            detected_city = city_match.group(1)
-        else:
-            # Fallback to edealerName if city is empty
-            name_match = re.search(r'"edealerName"\s*:\s*"([^"]+)"', html_content)
-            if name_match:
-                dealer_name = name_match.group(1).upper()
-                for city in DEALER_LOCATIONS.keys():
-                    if city.upper() in dealer_name:
-                        detected_city = city
-                        break
-        
-        # Set Address Data
-        dealer_data = DEALER_LOCATIONS.get(detected_city, DEALER_LOCATIONS["Warszawa"])
-        lat = dealer_data["lat"]
-        lon = dealer_data["lon"]
-        street = dealer_data.get("street", "Al. Krakowska 206")
 
-        # Format adresu jako JSON (wymagane przez system)
-        address_text = format_address_json(street, detected_city)
+def match_dealer_city(raw_city, raw_name):
+    if raw_city:
+        cand = raw_city.strip()
+        for known in DEALER_LOCATIONS:
+            if known.upper() == cand.upper():
+                return known
+        if len(cand) > 1:
+            return cand
+    if raw_name:
+        up = raw_name.upper()
+        for known in DEALER_LOCATIONS:
+            if known.upper() in up:
+                return known
+    return "Warszawa"
 
-        year_match = re.search(r'Rok produkcji\s*[:\-]?\s*(\d{4})', text_content, re.IGNORECASE)
-        if year_match:
-            dynamic_year = year_match.group(1)
-
-        return price, address_text, dynamic_year, lat, lon
-        
-    except Exception as e:
-        print(f"Błąd parsowania {url}: {e}")
-        fallback_addr = format_address_json("Al. Krakowska 206", "Warszawa")
-        return "", fallback_addr, "2024", "", ""
 
 def cleanup_images(current_vins):
-    """Usuwa zdjęcia, których nie ma już w aktualnej liście ofert."""
+    """Usuwa zdjęcia aut, których nie ma już w aktualnej liście ofert."""
     if not os.path.exists(IMAGES_DIR):
         return
-        
     print("Czyszczenie folderu ze zdjęciami...")
-    all_files = os.listdir(IMAGES_DIR)
     removed_count = 0
-    
-    for filename in all_files:
+    for filename in os.listdir(IMAGES_DIR):
         if filename.endswith(".jpg"):
             vin = filename.replace(".jpg", "")
             if vin not in current_vins:
@@ -170,46 +133,71 @@ def cleanup_images(current_vins):
                     removed_count += 1
                 except Exception as e:
                     print(f"Błąd podczas usuwania {filename}: {e}")
-    
     if removed_count > 0:
         print(f"Usunięto {removed_count} nieaktualnych zdjęć.")
 
-def process_product(product, index, total_count, driver):
-    try:
-        from scrapers.selenium_helper import get_b2b_price_selenium
-    except ImportError:
-        from selenium_helper import get_b2b_price_selenium
 
-    local_session = requests.Session()
-    local_session.headers.update({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"})
-    
+def get_model_slug(product):
+    classes = product.get("class_list", {})
+    class_values = classes.values() if isinstance(classes, dict) else classes
+    for cls in class_values:
+        if cls.startswith("product_cat-"):
+            slug = cls.replace("product_cat-", "")
+            if slug in MODEL_MAP:
+                return slug
+    # Fallback ze ścieżki URL
+    link = product.get("link") or ""
+    for slug in MODEL_MAP:
+        if f"/{slug}/" in link:
+            return slug
+    return None
+
+
+def fetch_wp_products():
+    all_products = []
+    page = 1
+    session = requests.Session()
+    session.headers.update({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"})
+    while True:
+        try:
+            r = session.get(f"{API_URL}?per_page=100&page={page}", timeout=15)
+            if r.status_code == 400:
+                print(f"Koniec wyników (HTTP 400 na stronie {page}).")
+                break
+            r.raise_for_status()
+            data = r.json()
+            if not data:
+                break
+            all_products.extend(data)
+            print(f"Pobrano stronę {page} ({len(data)} aut)...")
+            page += 1
+        except Exception as e:
+            print(f"Błąd pobierania / Koniec wyników przy stronie {page}: {e}")
+            break
+    return all_products
+
+
+def build_row(product, rate_info):
     pid = str(product.get("id"))
     link = product.get("link")
     title_raw = product.get("title", {}).get("rendered", "")
     vin = title_raw if len(title_raw) == 17 else f"DS-{pid}"
-    
-    classes = product.get("class_list", {})
-    
-    model = "DS Unknown"
-    for cls in classes.values():
-        if cls.startswith("product_cat-") and cls.replace("product_cat-", "") in MODEL_MAP:
-            model = MODEL_MAP[cls.replace("product_cat-", "")]
-    
+
+    model_slug = get_model_slug(product)
+    model = MODEL_MAP.get(model_slug, "DS Unknown")
     if model == "DS Unknown":
-        if "ds-7" in link: model = "DS 7"
-        elif "ds-3" in link: model = "DS 3"
-        elif "ds-4" in link: model = "DS 4"
-        elif "/n4/" in link: model = "N°4"
-        elif "ds-9" in link: model = "DS 9"
-        elif "/n8/" in link: model = "N°8"
+        return None
+
+    classes = product.get("class_list", {})
+    class_values = classes.values() if isinstance(classes, dict) else classes
 
     color = "Standard"
     fuel = "Gasoline"
     trans = "Automatic"
     drive = "FWD"
     trim = ""
-    
-    for cls in classes.values():
+
+    for cls in class_values:
         if cls.startswith("pa_kolor-"):
             color = cls.replace("pa_kolor-", "").replace("-", " ").title()
         elif cls.startswith("pa_typ-paliwa-"):
@@ -222,46 +210,34 @@ def process_product(product, index, total_count, driver):
         elif cls.startswith("pa_poziom-wyposazenia-"):
             trim = cls.replace("pa_poziom-wyposazenia-", "").replace("-", " ").title()
 
-    full_price, address_text, year, lat, lon = parse_detail_page(link, local_session)
-
-    installment = ""
-    try:
-        b2b_price = get_b2b_price_selenium(link, driver=driver)
-        if b2b_price:
-            installment = b2b_price
-            print(f"  [{index}/{total_count}] {vin}: B2B rata = {b2b_price} PLN")
-        else:
-            print(f"  [{index}/{total_count}] {vin}: Brak raty B2B — pomijam")
-    except Exception as e:
-        print(f"  [{index}/{total_count}] {vin}: Błąd Selenium: {e}")
-
-    clean_installment = installment.replace("PLN", "").replace(" ", "").strip()
-    
-    if not clean_installment:
+    if not rate_info or not rate_info.get("installment"):
         return None
-    try:
-        if int(clean_installment) <= 0:
-            return None
-    except ValueError:
-        return None
+    clean_installment = str(rate_info["installment"])
 
+    year = rate_info.get("year") or "2024"
+
+    full_price = ""
+    gross = rate_info.get("gross_price")
+    if isinstance(gross, (int, float)) and gross > 10000:
+        full_price = f"{int(round(gross))} PLN"
+    if not full_price:
+        yoast_desc = product.get("yoast_head_json", {}).get("description", "")
+        price_match = re.search(r'([\d\s]+)\s*zł', yoast_desc)
+        if price_match:
+            full_price = f"{re.sub(r'[^0-9]', '', price_match.group(1))} PLN"
     if not full_price:
         full_price = "200000 PLN"
 
-    amount_price_final = f"{clean_installment} PLN"
-
     image = ""
-    if "og_image" in product.get("yoast_head_json", {}):
-        imgs = product.get("yoast_head_json")["og_image"]
-        if imgs:
-            image = imgs[0].get("url")
+    imgs = product.get("yoast_head_json", {}).get("og_image", [])
+    if imgs:
+        image = imgs[0].get("url")
 
     if image:
         image_filename = f"{vin}.jpg"
         local_image_path = os.path.join(IMAGES_DIR, image_filename)
         original_image_url = image
         border_rgb = COLOR_CONFIG.get(color, (181, 162, 152))
-        
         try:
             if process_image(original_image_url, local_image_path, border_color_rgb=border_rgb):
                 image = f"{GITHUB_BASE_IMAGE_URL}/{image_filename}"
@@ -271,10 +247,15 @@ def process_product(product, index, total_count, driver):
         except Exception as e:
             print(f"Błąd renderingu zdjęcia {vin}: {e}")
 
+    detected_city = match_dealer_city(rate_info.get("dealer_city"),
+                                      rate_info.get("dealer_name"))
+    dealer_data = DEALER_LOCATIONS.get(detected_city, DEALER_LOCATIONS["Warszawa"])
+    address_text = format_address_json(dealer_data["street"], detected_city)
+
     tiktok_title = scraper_utils.format_inventory_title(model, trim, clean_installment)
     tiktok_desc = scraper_utils.format_inventory_description("DS Automobiles", model, trim, clean_installment)
 
-    row = {
+    return {
         "vehicle_id": vin,
         "title": tiktok_title,
         "description": tiktok_desc,
@@ -291,118 +272,49 @@ def process_product(product, index, total_count, driver):
         "price": full_price,
         "currency": "PLN",
         "address": address_text,
-        "latitude": lat,
-        "longitude": lon,
+        "latitude": dealer_data["lat"],
+        "longitude": dealer_data["lon"],
         "offer_type": "LEASE",
-        "amount_price": amount_price_final,
+        "amount_price": f"{clean_installment} PLN",
         "amount_qualifier": "per month",
         "fuel_type": fuel,
         "transmission": trans,
         "drivetrain": drive
     }
-    return row
 
-def process_chunk(chunk, chunk_id, total_count, base_index):
-    try:
-        from scrapers.selenium_helper import init_driver
-    except ImportError:
-        from selenium_helper import init_driver
-
-    driver = None
-    results = []
-    try:
-        driver = init_driver()
-        for i, p in enumerate(chunk):
-            if i > 0 and i % 50 == 0:
-                print(f"  [Chunk {chunk_id}] Restarting driver to free RAM...")
-                try: driver.quit()
-                except: pass
-                driver = init_driver()
-                
-            real_index = base_index + i + 1
-            res = process_product(p, real_index, total_count, driver)
-            if res:
-                results.append(res)
-            try: driver.delete_all_cookies()
-            except: pass
-    except Exception as e:
-        print(f"Chunk {chunk_id} error: {e}")
-    finally:
-        if driver:
-            try: driver.quit()
-            except: pass
-
-    return results
 
 def main():
     print("Pobieranie listy pojazdów z API sklepu DS...")
-    all_products = []
-    page = 1
-    session = requests.Session()
-    session.headers.update({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"})
+    os.makedirs(IMAGES_DIR, exist_ok=True)
 
-    while True:
-        try:
-            url = f"{API_URL}?per_page=100&page={page}"
-            r = session.get(url, timeout=15)
-            
-            if r.status_code == 400:
-                print(f"Koniec wyników (HTTP 400 na stronie {page}).")
-                break
-                
-            r.raise_for_status()
-            data = r.json()
-            if not data:
-                break
-            all_products.extend(data)
-            print(f"Pobrano stronę {page} ({len(data)} aut)...")
-            page += 1
-        except Exception as e:
-            print(f"Błąd pobierania / Koniec wyników przy stronie {page}: {e}")
-            break
-
+    all_products = fetch_wp_products()
+    all_products = [p for p in all_products if get_model_slug(p) and p.get("link")]
+    limit = int(os.environ.get("SFS_LIMIT", "0"))
+    if limit:
+        all_products = all_products[:limit]
     total = len(all_products)
-    print(f"Łącznie znaleziono {total} ofert. Pobieranie szczegółów (wielowątkowo)...")
+    print(f"Po odfiltrowaniu duchów: {total} ofert. Pobieranie rat przez API SFS...")
+
+    links = [p["link"] for p in all_products]
+    rates, stats = sfs_calculator.get_inventory_rates("ds", links)
 
     processed_rows = []
-    MAX_WORKERS = 4
-    
-    chunk_size = (total + MAX_WORKERS - 1) // MAX_WORKERS
-    chunks = [all_products[i * chunk_size:(i + 1) * chunk_size] for i in range(MAX_WORKERS)]
-
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        futures = []
-        base_idx = 0
-        for i, chunk in enumerate(chunks):
-            futures.append(executor.submit(process_chunk, chunk, i+1, total, base_idx))
-            base_idx += len(chunk)
-            
-        for future in as_completed(futures):
-            try:
-                res_list = future.result()
-                if res_list:
-                    processed_rows.extend(res_list)
-            except Exception as e:
-                print(f"Błąd wątku DS: {e}")
-
-    fieldnames = [
-        "vehicle_id", "title", "description", "link", "image_link",
-        "make", "model", "year", "mileage.value", "mileage.unit",
-        "body_style", "exterior_color", "state_of_vehicle",
-        "price", "currency", "address", "latitude", "longitude",
-        "offer_type", "amount_price", "amount_qualifier", "fuel_type", "transmission", "drivetrain"
-    ]
+    for product in all_products:
+        row = build_row(product, rates.get(product["link"]))
+        if row:
+            processed_rows.append(row)
 
     print(f"\nGenerowanie feedu z {len(processed_rows)} ofertami...")
 
     current_vins = [r['vehicle_id'] for r in processed_rows]
     cleanup_images(current_vins)
-    
-    success = scraper_utils.safe_save_csv(processed_rows, fieldnames, OUTPUT_FILE)
-    
+
+    success = scraper_utils.safe_save_csv(processed_rows, FIELDNAMES, OUTPUT_FILE)
     if success:
         print(f"Sukces! Dane zapisane w: {OUTPUT_FILE}")
     else:
         print(f"BŁĄD KRYTYCZNY: Nie udało się zapisać {OUTPUT_FILE}")
 
-if __name__ == "__main__": main()
+
+if __name__ == "__main__":
+    main()

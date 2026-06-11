@@ -5,3 +5,4 @@ beautifulsoup4
 selenium
 Pillow
 python-dotenv
+curl_cffi

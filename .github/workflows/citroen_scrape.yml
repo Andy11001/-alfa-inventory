@@ -11,6 +11,8 @@ env:
 jobs:
   update-citroen:
     runs-on: ubuntu-latest
+    # API SFS zamiast Selenium — Chrome zostaje tylko dla ścieżki awaryjnej.
+    timeout-minutes: 30
     permissions:
       contents: write
     steps:
@@ -27,6 +29,10 @@ jobs:
           chrome-version: stable
       - run: mkdir -p data/images
       - name: Run Citroen Inventory Scraper
+        env:
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
         run: PYTHONPATH=. python scrapers/citroen_inventory.py
       - name: Commit and push
         run: |
