@@ -25,9 +25,10 @@ except ModuleNotFoundError:
 API_URL = "https://sklep.opel.pl/wp-json/wp/v2/product"
 BASE_URL = "https://sklep.opel.pl"
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
-OUTPUT_FILE_OSO = os.path.join(OUTPUT_DIR, "opel_osobowe_inventory.csv")
-OUTPUT_FILE_DOS = os.path.join(OUTPUT_DIR, "opel_dostawcze_inventory.csv")
-IMAGES_DIR = os.path.join(OUTPUT_DIR, "images")
+# smoke_output: przy SFS_LIMIT zapis do data/smoke/, nie do produkcyjnego feedu
+OUTPUT_FILE_OSO = scraper_utils.smoke_output(os.path.join(OUTPUT_DIR, "opel_osobowe_inventory.csv"))
+OUTPUT_FILE_DOS = scraper_utils.smoke_output(os.path.join(OUTPUT_DIR, "opel_dostawcze_inventory.csv"))
+IMAGES_DIR = scraper_utils.smoke_output(os.path.join(OUTPUT_DIR, "images"))
 GITHUB_BASE_IMAGE_URL = "https://raw.githubusercontent.com/Andy11001/-alfa-inventory/master/data/images"
 
 DOS_CATEGORIES = ["combo-cargo", "movano", "vivaro", "vivaro-zafira"]
@@ -88,7 +89,7 @@ def build_row(product, rate_info):
     trans = "Manual"
     drive = "FWD"
     trim = ""
-    year = "2024"
+    year = scraper_utils.current_year()
 
     for cls in class_values:
         if cls.startswith("pa_kolor-"):
@@ -126,7 +127,10 @@ def build_row(product, rate_info):
         if price_match:
             full_price = f"{re.sub(r'[^0-9]', '', price_match.group(1))} PLN"
     if not full_price:
-        full_price = "150000 PLN"
+        # bez ceny nie ma oferty: wpisana na sztywno kwota byłaby
+        # zmyśloną ceną w reklamie
+        print(f"  Pomijam {vin}: brak ceny (attachOffer i opis yoast).")
+        return None
 
     image = ""
     imgs = product.get("yoast_head_json", {}).get("og_image", [])
@@ -206,7 +210,7 @@ def main():
         scraper_utils.safe_save_csv(dos, FIELDNAMES, OUTPUT_FILE_DOS, min_rows_threshold=min_rows, no_shrink=no_shrink)
 
     def handle_term(signum, frame):
-        print(f"\n⚠️  Sygnał {signum} — zapis częściowych wyników i wyjście.")
+        print(f"\nSygnał {signum} — zapis częściowych wyników i wyjście.")
         save_all(reason=f"partial/sig{signum}", no_shrink=True, min_rows=0)
         os._exit(0)
 
@@ -229,7 +233,7 @@ def main():
         if i % 100 == 0:
             print(f"  Przetworzono {i}/{total}...")
 
-    save_all(reason="complete", no_shrink=False, min_rows=5)
+    save_all(reason="complete", no_shrink=False, min_rows=1 if limit else 5)
     print("Zakończono sukcesem.")
 
 

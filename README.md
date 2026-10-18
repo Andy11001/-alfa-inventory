@@ -62,7 +62,7 @@ pip install -r requirements.txt
 PYTHONPATH=. python scrapers/opel_inventory.py      # i analogicznie pozostałe
 ```
 
-Przydatne zmienne: `SFS_LIMIT=20` (szybki test na 20 autach),
+Przydatne zmienne: `SFS_LIMIT=20` (szybki test na 20 autach, zapis do `data/smoke/`),
 `SFS_DISABLE_SELENIUM_RESCUE=1` (lokalnie bez Chrome). Pełna lista w
 [docs/SFS_CALCULATOR.md](docs/SFS_CALCULATOR.md).
 

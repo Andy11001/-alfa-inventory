@@ -31,8 +31,9 @@ except ModuleNotFoundError:
     from image_processor import process_image
 
 API_URL = "https://sklep.dsautomobiles.pl/wp-json/wp/v2/product"
-OUTPUT_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "ds_inventory.csv")
-IMAGES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "images")
+# smoke_output: przy SFS_LIMIT zapis do data/smoke/, nie do produkcyjnego feedu
+OUTPUT_FILE = scraper_utils.smoke_output(os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "ds_inventory.csv"))
+IMAGES_DIR = scraper_utils.smoke_output(os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "images"))
 GITHUB_BASE_IMAGE_URL = "https://raw.githubusercontent.com/Andy11001/-alfa-inventory/master/data/images"
 
 MODEL_MAP = {
@@ -179,7 +180,7 @@ def build_row(product, rate_info):
         return None
     clean_installment = str(rate_info["installment"])
 
-    year = rate_info.get("year") or "2024"
+    year = rate_info.get("year") or scraper_utils.current_year()
 
     full_price = ""
     gross = rate_info.get("gross_price")
@@ -191,7 +192,10 @@ def build_row(product, rate_info):
         if price_match:
             full_price = f"{re.sub(r'[^0-9]', '', price_match.group(1))} PLN"
     if not full_price:
-        full_price = "200000 PLN"
+        # bez ceny nie ma oferty: wpisana na sztywno kwota byłaby
+        # zmyśloną ceną w reklamie
+        print(f"  Pomijam {vin}: brak ceny (attachOffer i opis yoast).")
+        return None
 
     image = ""
     imgs = product.get("yoast_head_json", {}).get("og_image", [])
@@ -272,7 +276,8 @@ def main():
     print(f"\nGenerowanie feedu z {len(processed_rows)} ofertami...")
 
     previous_vins = read_previous_vins()
-    success = scraper_utils.safe_save_csv(processed_rows, FIELDNAMES, OUTPUT_FILE)
+    success = scraper_utils.safe_save_csv(processed_rows, FIELDNAMES, OUTPUT_FILE,
+                                          min_rows_threshold=1 if limit else 5)
     if success:
         cleanup_images(previous_vins, [r["vehicle_id"] for r in processed_rows])
         print(f"Sukces! Dane zapisane w: {OUTPUT_FILE}")

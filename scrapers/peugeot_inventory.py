@@ -23,9 +23,10 @@ except ModuleNotFoundError:
 API_URL = "https://sklep.peugeot.pl/wp-json/wp/v2/product"
 BASE_URL = "https://sklep.peugeot.pl"
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
-OUTPUT_FILE_OSO = os.path.join(OUTPUT_DIR, "peugeot_osobowe_inventory.csv")
-OUTPUT_FILE_LCV = os.path.join(OUTPUT_DIR, "peugeot_lcv_inventory.csv")
-IMAGES_DIR = os.path.join(OUTPUT_DIR, "images")
+# smoke_output: przy SFS_LIMIT zapis do data/smoke/, nie do produkcyjnego feedu
+OUTPUT_FILE_OSO = scraper_utils.smoke_output(os.path.join(OUTPUT_DIR, "peugeot_osobowe_inventory.csv"))
+OUTPUT_FILE_LCV = scraper_utils.smoke_output(os.path.join(OUTPUT_DIR, "peugeot_lcv_inventory.csv"))
+IMAGES_DIR = scraper_utils.smoke_output(os.path.join(OUTPUT_DIR, "images"))
 GITHUB_BASE_IMAGE_URL = "https://raw.githubusercontent.com/Andy11001/-alfa-inventory/master/data/images"
 
 LCV_MODELS = ["Boxer", "Boxer Podwozie", "Expert", "Partner"]
@@ -163,7 +164,7 @@ def build_row(product, rate_info):
     trans = "Manual"
     drive = "FWD"
     trim = ""
-    year = "2025"
+    year = scraper_utils.current_year()
     body_style = "Hatchback"
 
     for cls in class_values:
@@ -223,7 +224,10 @@ def build_row(product, rate_info):
         if price_match:
             full_price = f"{re.sub(r'[^0-9]', '', price_match.group(1))} PLN"
     if not full_price:
-        full_price = "150000 PLN"
+        # bez ceny nie ma oferty: wpisana na sztywno kwota byłaby
+        # zmyśloną ceną w reklamie
+        print(f"  Pomijam {vin}: brak ceny (attachOffer i opis yoast).")
+        return None
 
     image = ""
     imgs = product.get("yoast_head_json", {}).get("og_image", [])
@@ -304,8 +308,10 @@ def main():
     print(f"  Osobowe: {len(osobowe_rows)} pojazdów")
     print(f"  Dostawcze: {len(lcv_rows)} pojazdów")
 
-    scraper_utils.safe_save_csv(osobowe_rows, FIELDNAMES, OUTPUT_FILE_OSO, min_rows_threshold=0)
-    scraper_utils.safe_save_csv(lcv_rows, FIELDNAMES, OUTPUT_FILE_LCV, min_rows_threshold=0)
+    # próg 5: przy awarii WP API pusty CSV nie może pójść do commita i Gista
+    min_rows = 1 if limit else 5
+    scraper_utils.safe_save_csv(osobowe_rows, FIELDNAMES, OUTPUT_FILE_OSO, min_rows_threshold=min_rows)
+    scraper_utils.safe_save_csv(lcv_rows, FIELDNAMES, OUTPUT_FILE_LCV, min_rows_threshold=min_rows)
     print("\nZakończono.")
 
 

@@ -157,13 +157,27 @@ def send_email_alert(subject, body):
     except Exception as e:
         logger.error(f"Nie udało się wysłać maila: {e}")
 
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def smoke_output(path):
+    """Ścieżka zapisu: przy SFS_LIMIT (smoke test) data/smoke/<plik>.
+
+    Próbka 20 aut nie może nadpisać produkcyjnego CSV ani zdjęć, które
+    workflow commituje i publikuje w Giście.
+    """
+    if not int(os.environ.get("SFS_LIMIT", "0") or 0):
+        return path
+    return os.path.join(os.path.dirname(path), "smoke", os.path.basename(path))
+
+
 def create_backup(file_path, logger_instance=None):
-    """Tworzy kopię zapasową pliku w folderze archive/ z datą."""
+    """Tworzy kopię zapasową pliku w folderze archive/ projektu z datą."""
     log = logger_instance or logger
     if not os.path.exists(file_path):
         return
     
-    archive_dir = os.path.join(os.path.dirname(os.path.dirname(file_path)), 'archive')
+    archive_dir = os.path.join(PROJECT_ROOT, 'archive')
     if not os.path.exists(archive_dir):
         os.makedirs(archive_dir)
         

@@ -18,3 +18,6 @@ debug_*.html
 *.bak
 _probe/
 api_ds*.json
+
+# Smoke testy z SFS_LIMIT (scraper_utils.smoke_output)
+data/smoke/

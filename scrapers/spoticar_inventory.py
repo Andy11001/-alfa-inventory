@@ -324,6 +324,13 @@ def main():
         print(f"  Strona {page_num}/{total_pages}: {page_count} wierszy")
         time.sleep(0.5)  # Be polite
 
+    # Paginacja przesuwa się, gdy w trakcie pobierania dochodzą nowe auta,
+    # więc to samo auto trafia na dwie strony (~35 na run) — zostaje jedno
+    unique = {r["vehicle_id"]: r for r in all_rows}
+    if len(unique) < len(all_rows):
+        print(f"  Pominięto {len(all_rows) - len(unique)} aut powtórzonych między stronami.")
+    all_rows = list(unique.values())
+
     print(f"\n[3/3] Zapisywanie feedu ({len(all_rows)} ofert)...")
 
     fieldnames = [

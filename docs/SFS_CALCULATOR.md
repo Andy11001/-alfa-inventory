@@ -88,10 +88,11 @@ Citroën Jumper 2387 (Selenium w ogóle nie umiał odczytać tej strony).
 
 | Zmienna | Domyślnie | Po co |
 |---------|-----------|-------|
-| `SFS_LIMIT` | 0 (bez limitu) | Smoke testy: przetwórz tylko N aut |
+| `SFS_LIMIT` | 0 (bez limitu) | Smoke testy: przetwórz tylko N aut; CSV i zdjęcia idą wtedy do `data/smoke/` |
 | `SFS_PAGE_WORKERS` | 8 | Równoległość pobierania stron |
 | `SFS_DETECT_CHUNK` | 40 | Aut na jeden batch do API |
 | `SFS_RESCUE_THRESHOLD` | 0.5 | Próg pokrycia uruchamiający Selenium |
+| `SFS_MAX_CONSECUTIVE_FAILURES` | 8 | Po tylu nieudanych zapytaniach do API SFS z rzędu liczenie rat jest przerywane |
 | `SFS_RESCUE_CAP` | 150 | Maks. aut ratowanych Selenium |
 | `SFS_DISABLE_SELENIUM_RESCUE` | – | `1` = nigdy nie odpalaj Selenium |
 
