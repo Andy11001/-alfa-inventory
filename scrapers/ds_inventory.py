@@ -10,6 +10,7 @@ Uwaga: DS domyślnie wyświetla produkt "b2b" (Abonament SimplyDrive B2B),
 nie l101 — skonfigurowane w sfs_calculator.BRAND_CONFIG (zweryfikowane
 empirycznie Selenium vs API).
 """
+import csv
 import re
 import os
 import sys
@@ -90,23 +91,39 @@ FIELDNAMES = [
 ]
 
 
-def cleanup_images(current_vins):
-    """Usuwa zdjęcia aut, których nie ma już w aktualnej liście ofert."""
-    if not os.path.exists(IMAGES_DIR):
-        return
-    print("Czyszczenie folderu ze zdjęciami...")
+def read_previous_vins():
+    """VIN-y z obecnego ds_inventory.csv (przed nadpisaniem)."""
+    if not os.path.exists(OUTPUT_FILE):
+        return set()
+    try:
+        with open(OUTPUT_FILE, encoding="utf-8-sig", newline="") as f:
+            return {r["vehicle_id"] for r in csv.DictReader(f) if r.get("vehicle_id")}
+    except Exception as e:
+        print(f"Nie udało się odczytać poprzedniego feedu DS: {e}")
+        return set()
+
+
+def cleanup_images(previous_vins, current_vins):
+    """Usuwa zdjęcia aut DS, które wypadły z feedu.
+
+    data/images dzielą Opel, Peugeot, Citroën i DS, więc kasujemy wyłącznie
+    pliki aut z poprzedniego feedu DS ({vin}.jpg i {vin}_clean.jpg), a nie
+    wszystko, co nie jest aktualnym VIN-em DS. Wołane dopiero po udanym
+    zapisie CSV: pusty albo odrzucony wynik niczego nie usuwa.
+    """
     removed_count = 0
-    for filename in os.listdir(IMAGES_DIR):
-        if filename.endswith(".jpg"):
-            vin = filename.replace(".jpg", "")
-            if vin not in current_vins:
-                try:
-                    os.remove(os.path.join(IMAGES_DIR, filename))
-                    removed_count += 1
-                except Exception as e:
-                    print(f"Błąd podczas usuwania {filename}: {e}")
+    for vin in set(previous_vins) - set(current_vins):
+        for filename in (f"{vin}.jpg", f"{vin}_clean.jpg"):
+            path = os.path.join(IMAGES_DIR, filename)
+            if not os.path.exists(path):
+                continue
+            try:
+                os.remove(path)
+                removed_count += 1
+            except OSError as e:
+                print(f"Błąd podczas usuwania {filename}: {e}")
     if removed_count > 0:
-        print(f"Usunięto {removed_count} nieaktualnych zdjęć.")
+        print(f"Usunięto {removed_count} zdjęć aut DS, których nie ma już w feedzie.")
 
 
 def get_model_slug(product):
@@ -254,11 +271,10 @@ def main():
 
     print(f"\nGenerowanie feedu z {len(processed_rows)} ofertami...")
 
-    current_vins = [r['vehicle_id'] for r in processed_rows]
-    cleanup_images(current_vins)
-
+    previous_vins = read_previous_vins()
     success = scraper_utils.safe_save_csv(processed_rows, FIELDNAMES, OUTPUT_FILE)
     if success:
+        cleanup_images(previous_vins, [r["vehicle_id"] for r in processed_rows])
         print(f"Sukces! Dane zapisane w: {OUTPUT_FILE}")
     else:
         print(f"BŁĄD KRYTYCZNY: Nie udało się zapisać {OUTPUT_FILE}")
