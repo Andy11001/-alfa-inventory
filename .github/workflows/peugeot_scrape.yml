@@ -53,6 +53,10 @@ jobs:
         run: PYTHONPATH=. python scrapers/peugeot_inventory.py
 
       - name: Run Peugeot Model Feed
+        env:
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
         run: PYTHONPATH=. python scrapers/peugeot_model.py
 
       # --- COMMIT CHANGES ---
@@ -60,12 +64,21 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add data/peugeot_* data/images/* || true
+          git add -A data/peugeot_* data/images || true
           git commit -m "Auto: update Peugeot feeds [skip ci]" || echo "No changes to commit"
-          # Retry loop to prevent concurrent push failures
+          # Pętla na wypadek równoległych pushy innych workflowów; po 7
+          # nieudanych próbach job ma być czerwony — inaczej Gist dostaje CSV
+          # z linkami do zdjęć, których nie ma w repo
+          pushed=0
           for i in {1..7}; do
-            git pull --rebase origin master && git push origin master && break || sleep 15
+            if git pull --rebase origin master && git push origin master; then pushed=1; break; fi
+            sleep 15
           done
+          if [ "$pushed" != 1 ]; then
+            echo "::error::Push nie powiódł się po 7 próbach"
+            git status --short | head -20
+            exit 1
+          fi
 
       # --- DEPLOY GIST (Peugeot) ---
       - name: Update Peugeot Osobowe Inventory Gist

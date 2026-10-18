@@ -29,16 +29,30 @@ jobs:
       - run: pip install requests beautifulsoup4 curl_cffi python-dotenv
       - run: mkdir -p data
       - name: Run SpotiCar Inventory Scraper
+        env:
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
         run: PYTHONPATH=. python scrapers/spoticar_inventory.py
       - name: Commit and push
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add data/spoticar_* || true
+          git add -A data/spoticar_* || true
           git commit -m "Auto: update SpotiCar feed [skip ci]" || true
+          # Pętla na wypadek równoległych pushy innych workflowów; po 5
+          # nieudanych próbach job ma być czerwony — inaczej Gist dostaje CSV
+          # z linkami do zdjęć, których nie ma w repo
+          pushed=0
           for i in {1..5}; do
-            git pull --rebase origin master && git push origin master && break || sleep 10
+            if git pull --rebase origin master && git push origin master; then pushed=1; break; fi
+            sleep 10
           done
+          if [ "$pushed" != 1 ]; then
+            echo "::error::Push nie powiódł się po 5 próbach"
+            git status --short | head -20
+            exit 1
+          fi
       - name: Update SpotiCar Inventory Gist
         uses: exuanbo/actions-deploy-gist@v1
         with:
