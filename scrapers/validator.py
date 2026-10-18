@@ -55,7 +55,12 @@ def read_rows(path):
 
 def previous_row_count(path):
     """Liczba wierszy tego pliku w HEAD (None, gdy plik nie jest w gicie)."""
-    rel = os.path.relpath(os.path.abspath(path), PROJECT_ROOT).replace(os.sep, "/")
+    try:
+        rel = os.path.relpath(os.path.abspath(path), PROJECT_ROOT).replace(os.sep, "/")
+    except ValueError:  # inny dysk niż repo (Windows)
+        return None
+    if rel.startswith("../"):
+        return None
     try:
         out = subprocess.run(["git", "show", f"HEAD:{rel}"], cwd=PROJECT_ROOT,
                              capture_output=True, check=True).stdout
