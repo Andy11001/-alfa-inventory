@@ -2,16 +2,31 @@
 
 Automatyczne pobieranie inwentarza i feedów modelowych dla marek:
 **Alfa Romeo, DS, Opel, Peugeot, Citroën, Fiat (+ Professional), Jeep,
-SpotiCar, Leapmotor**. Wyniki trafiają do `data/*.csv`, a GitHub Actions
-publikuje je do Gistów co 4–6 h.
+Abarth, SpotiCar, Leapmotor**. Wyniki trafiają do `data/*.csv`, a GitHub
+Actions publikuje je do Gistów co 4–6 h.
 
 ## Architektura scrapowania (od czerwca 2026 — bez Selenium w inwentarzach)
 
+### Feedy stockowe (auta z VIN)
+
 | Źródło | Marki | Metoda |
 |--------|-------|--------|
-| `salon.*.pl` JSON API | Alfa, Jeep, Fiat, Fiat Prof. | czyste API (rata w `financing_info`) |
+| `salon.*.pl` JSON API | Alfa, Jeep, Fiat, Fiat Prof., Abarth | czyste API (rata w `financing_info`) |
 | `sklep.*.pl` WordPress | Opel, Citroën, Peugeot, DS | WP JSON API + **bezpośrednie API kalkulatora SFS** |
 | `spoticar.pl` | SpotiCar | curl_cffi (TLS impersonation, omija Akamai) |
+
+### Feedy modelowe (cenniki)
+
+| Źródło | Marki | Metoda |
+|--------|-------|--------|
+| API `configv3` | Peugeot, Opel, Citroën, DS | trimy, silniki, ceny i rendery 3D z konfiguratora |
+| Statyczne JSON-y SCCF | Fiat, Jeep, Abarth | cennik konfiguratora „omni" + curl_cffi (Akamai) |
+| strony marki | Alfa Romeo, Leapmotor | scraping tekstu promocji |
+
+Marki ex-FCA nie mają configv3 — ich konfigurator czyta wystawione publicznie
+pliki `/sccf/prod/{marka}/publish/data/fccf_mv/...`. Ceny są tam **netto**
+(brutto = ×1,23), a zdjęcia trzeba brać ze stron modeli, bo serwis renderów
+wymaga autoryzacji. Szczegóły w nagłówku `scrapers/fca_sccf.py`.
 
 Sklepy WordPress nie podają raty w API — liczy ją kalkulator Stellantis
 Financial Services w przeglądarce. Zamiast uruchamiać Chrome/Selenium
@@ -55,7 +70,10 @@ Przydatne zmienne: `SFS_LIMIT=20` (szybki test na 20 autach),
 
 - `scrapers/sfs_calculator.py` — klient kalkulatora SFS (serce projektu),
 - `scrapers/wp_shop.py` — wspólne helpery sklepów WordPress (Opel/Citroën/Peugeot/DS),
-- `scrapers/salon_api.py` — wspólna, null-safe obsługa rodziny salon.* (Alfa/Jeep/Fiat),
+- `scrapers/salon_api.py` — wspólna, null-safe obsługa rodziny salon.* (Alfa/Jeep/Fiat/Abarth),
+- `scrapers/fca_sccf.py` — wspólne cenniki modelowe marek ex-FCA (Fiat/Jeep/Abarth),
+- `scrapers/configv3.py` — wspólny klient API configv3 (używa go Citroën;
+  peugeot_model.py i opel_model.py mają jeszcze własne kopie tej logiki),
 - `scrapers/*_inventory.py` — feedy stockowe (auta z VIN; cienkie pliki marek),
 - `scrapers/*_model.py` — feedy modelowe (cenniki/konfigurator),
 - `scrapers/scraper_utils.py` — zapis CSV, alerty, retry, formaty tytułów,

@@ -82,6 +82,25 @@ def format_inventory_description(make, model, trim, installment, city=""):
     return " · ".join(parts)
 # ------------------------------------------
 
+import re
+
+LEASE_RX = re.compile(r"(\d[\d\s ]{2,9})\s*z[łl][^.]{0,30}?/?\s*mies",
+                      re.IGNORECASE)
+
+def extract_lease_price(page_text):
+    """Najniższa rata miesięczna z tekstu strony modelu (None, gdy brak).
+
+    Używane przez feedy modelowe obu rodzin (configv3 i SCCF). Odcinamy
+    wartości spoza przedziału 100–20 000 zł — poniżej i powyżej to na pewno
+    nie jest miesięczna rata, tylko np. cena auta albo numer telefonu.
+    """
+    values = []
+    for raw in LEASE_RX.findall((page_text or "").replace(" ", " ")):
+        digits = re.sub(r"[^\d]", "", raw)
+        if digits and 100 <= int(digits) <= 20000:
+            values.append(int(digits))
+    return min(values) if values else None
+
 import hashlib
 
 def generate_stable_id(text, prefix="", length=10):
