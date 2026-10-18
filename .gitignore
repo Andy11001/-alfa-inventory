@@ -2,13 +2,20 @@ __pycache__/
 *.pyc
 *.log
 nul
-check_*.py
+/check_*.py
 debug_landing.png
 .DS_Store
+Thumbs.db
 .vscode/
+.idea/
+.venv/
+venv/
 
 # Security
 .env
+.env.*
+!.env.example
+.claude/settings.local.json
 
 # Temp/debug files
 archive/
