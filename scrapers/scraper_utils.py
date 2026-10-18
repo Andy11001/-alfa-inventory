@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 import time
 import tempfile
@@ -6,7 +7,7 @@ import csv
 import logging
 import smtplib
 from email.message import EmailMessage
-from datetime import datetime
+from datetime import date, datetime
 from dotenv import load_dotenv
 
 # Ładowanie zmiennych z pliku .env (jeśli istnieje)
@@ -16,26 +17,31 @@ load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# --- NOWA SEKCJA: Formatting Description ---
-def get_availability_word(model_name):
-    """
-    Automatycznie określa rodzaj gramatyczny (Męski/Żeński) dla modelu samochodu.
-    Zwraca "dostępny" (Męski) lub "dostępna" (Żeński).
-    """
-    if not model_name: 
-        return "dostępny"
-        
-    m = model_name.upper().strip()
+# --- Formatowanie tytułów i opisów (TikTok/Meta Automotive Ads) ---
 
-    # 1. Logika dla DS (Marka męska - "Ten DS")
-    if "DS" in m or m.startswith("DS"):
-        return "dostępny"
-    
-    # 2. Logika dla Alfa Romeo (Marka żeńska - "Ta Alfa")
-    # Zgodnie z sugestią i powszechną praktyką marketingową ("Ta Alfa Romeo"),
-    # dla wszystkich modeli Alfa Romeo przyjmujemy rodzaj żeński.
-    # Np. "Alfa Romeo Junior dostępna", "Alfa Romeo Stelvio dostępna".
-    return "dostępna"
+def current_year():
+    """Bieżący rok jako tekst: domyślny rocznik ofert i cenników.
+
+    Zastępuje wpisane na sztywno "2024"/"2025"/"2026", które co roku
+    trzeba było poprawiać w kilku plikach.
+    """
+    return str(date.today().year)
+
+
+_NEW_WORD_RX = re.compile(r"\bnow[yae]\b", re.IGNORECASE)
+
+
+def with_new_prefix(title):
+    """'Nowy {title}', chyba że nazwa modelu już zawiera 'Nowy/Nowa/Nowe'.
+
+    Konfiguratory nazywają modele "Nowy 3008", "Nowe 308", więc ślepe
+    doklejanie dawało "Nowy Peugeot Nowy 3008" w setkach wierszy feedów.
+    """
+    title = (title or "").strip()
+    if _NEW_WORD_RX.search(title):
+        return title
+    return f"Nowy {title}"
+
 
 def format_model_description(title, price_str):
     """
@@ -81,8 +87,6 @@ def format_inventory_description(make, model, trim, installment, city=""):
     parts.append("Sprawdź ofertę!")
     return " · ".join(parts)
 # ------------------------------------------
-
-import re
 
 LEASE_RX = re.compile(r"(\d[\d\s ]{2,9})\s*z[łl][^.]{0,30}?/?\s*mies",
                       re.IGNORECASE)
@@ -134,7 +138,7 @@ def send_email_alert(subject, body):
     recipient = os.environ.get("EMAIL_RECIPIENT", user) # Wyślij do siebie jeśli brak odbiorcy
 
     if not user or not password:
-        logger.warning("⚠️ Konfiguracja e-mail (EMAIL_USER/EMAIL_PASSWORD) nie jest ustawiona. Alert nie został wysłany.")
+        logger.warning("Konfiguracja e-mail (EMAIL_USER/EMAIL_PASSWORD) nie jest ustawiona. Alert nie został wysłany.")
         return
 
     msg = EmailMessage()
@@ -144,14 +148,14 @@ def send_email_alert(subject, body):
     msg['To'] = recipient
 
     try:
-        server = smtplib.SMTP(host, port)
-        server.starttls()
-        server.login(user, password)
-        server.send_message(msg)
-        server.quit()
-        logger.info(f"📧 Wysłano alert e-mail: {subject}")
+        # timeout: zawieszony serwer SMTP nie może wisieć do limitu joba
+        with smtplib.SMTP(host, port, timeout=30) as server:
+            server.starttls()
+            server.login(user, password)
+            server.send_message(msg)
+        logger.info(f"Wysłano alert e-mail: {subject}")
     except Exception as e:
-        logger.error(f"❌ Nie udało się wysłać maila: {e}")
+        logger.error(f"Nie udało się wysłać maila: {e}")
 
 def create_backup(file_path, logger_instance=None):
     """Tworzy kopię zapasową pliku w folderze archive/ z datą."""
@@ -173,25 +177,51 @@ def create_backup(file_path, logger_instance=None):
     except Exception as e:
         log.error(f"Nie udało się utworzyć kopii zapasowej: {e}")
 
+def dedupe_rows(data_rows, key="vehicle_id"):
+    """Usuwa powtórzone wiersze po `key` (zostaje pierwszy).
+
+    Odbiorcy feedów (TikTok/Meta) odrzucają albo nadpisują pozycje z tym
+    samym ID, więc duplikat to w najlepszym razie szum w katalogu.
+    """
+    seen = set()
+    out = []
+    for row in data_rows:
+        rid = row.get(key)
+        if rid:
+            if rid in seen:
+                continue
+            seen.add(rid)
+        out.append(row)
+    return out
+
+
 def safe_save_csv(data_rows, fieldnames, output_file, min_rows_threshold=5, no_shrink=False):
     """
     Bezpieczny zapis pliku CSV:
-    1. Sprawdza czy liczba wierszy > min_rows_threshold.
-    2. Zapisuje do pliku tymczasowego.
-    3. Tworzy backup starego pliku.
-    4. Podmienia plik docelowy (atomic write).
+    1. Usuwa duplikaty vehicle_id (gdy feed ma taką kolumnę).
+    2. Sprawdza czy liczba wierszy >= min_rows_threshold.
+    3. Zapisuje do pliku tymczasowego w katalogu docelowym.
+    4. Tworzy backup starego pliku.
+    5. Podmienia plik docelowy przez os.replace (atomowo, ten sam dysk).
 
     no_shrink=True: nie nadpisuj istniejącego pliku, jeśli nowy zestaw ma MNIEJ
     wierszy niż obecny (używane przy zapisie częściowym po sygnale/timeoucie —
     nigdy nie zamieniamy pełnego feedu na niekompletny).
     """
+    if "vehicle_id" in fieldnames:
+        unique_rows = dedupe_rows(data_rows)
+        if len(unique_rows) < len(data_rows):
+            logger.warning(f"Pominięto {len(data_rows) - len(unique_rows)} powtórzonych "
+                           f"vehicle_id w {os.path.basename(output_file)}.")
+        data_rows = unique_rows
+
     if len(data_rows) < min_rows_threshold:
         msg = f"ZBYT MAŁO DANYCH! Próbowano zapisać {len(data_rows)} wierszy (wymagane min. {min_rows_threshold}). Zapis anulowany."
         logger.error(msg)
         send_email_alert("Data Threshold Error", f"{msg}\nPlik: {output_file}")
         return False
 
-    # Sprawdzenie drastycznego spadku liczby ofert (opcjonalne, np. max 50% spadku)
+    # Sprawdzenie drastycznego spadku liczby ofert
     if os.path.exists(output_file):
         try:
             with open(output_file, 'r', encoding='utf-8') as f:
@@ -210,25 +240,25 @@ def safe_save_csv(data_rows, fieldnames, output_file, min_rows_threshold=5, no_s
         except Exception:
             pass
 
-    # Krok 1 & 2: Zapis do tymczasowego pliku
-    temp_dir = tempfile.gettempdir()
-    temp_path = os.path.join(temp_dir, f"temp_{os.path.basename(output_file)}")
-    
+    # Plik tymczasowy w katalogu docelowym: os.replace jest wtedy atomowy
+    # (ten sam dysk), a unikalna nazwa nie koliduje z równoległym zapisem.
+    out_dir = os.path.dirname(os.path.abspath(output_file))
+    os.makedirs(out_dir, exist_ok=True)
+    fd, temp_path = tempfile.mkstemp(prefix=f".{os.path.basename(output_file)}.",
+                                     suffix=".tmp", dir=out_dir)
+
     try:
-        with open(temp_path, 'w', newline='', encoding='utf-8-sig') as f:
+        with os.fdopen(fd, 'w', newline='', encoding='utf-8-sig') as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction='ignore')
             writer.writeheader()
             writer.writerows(data_rows)
-        
+
         # Weryfikacja czy plik tymczasowy nie jest pusty
         if os.path.getsize(temp_path) < 10:
             raise Exception("Wygenerowany plik tymczasowy jest podejrzanie mały/pusty.")
 
-        # Krok 3: Backup
         create_backup(output_file)
-
-        # Krok 4: Atomowa podmiana
-        shutil.move(temp_path, output_file)
+        os.replace(temp_path, output_file)
         logger.info(f"Sukces! Zapisano {len(data_rows)} ofert do {output_file}")
         return True
 
@@ -238,20 +268,36 @@ def safe_save_csv(data_rows, fieldnames, output_file, min_rows_threshold=5, no_s
             os.remove(temp_path)
         return False
 
-def fetch_with_retry(session, url, retries=3, delay=3, **kwargs):
-    """Wykonuje żądanie HTTP z automatycznym ponawianiem."""
-    for i in range(retries):
+
+def _is_client_error(exc):
+    """HTTP 4xx (poza 429): ponawianie nic nie da (404, 403 z Akamai)."""
+    status = getattr(getattr(exc, "response", None), "status_code", None)
+    return isinstance(status, int) and 400 <= status < 500 and status != 429
+
+
+def fetch_with_retry(session, url, retries=3, delay=3, alert=False, **kwargs):
+    """GET z ponawianiem i wykładniczym backoffem (delay, 2×delay, …).
+
+    - domyślny timeout 30 s: bez niego zawieszony serwer wiesza cały job,
+    - błędów 4xx nie ponawiamy (poza 429),
+    - alert=True wysyła e-mail po ostatecznej porażce. Domyślnie wyłączony,
+      bo większość wywołujących sama obsługuje błąd (pominięcie modelu,
+      zapasowe źródło) i mail przy każdej takiej porażce to spam.
+    """
+    kwargs.setdefault("timeout", 30)
+    for attempt in range(retries):
         try:
             response = session.get(url, **kwargs)
             response.raise_for_status()
             return response
         except Exception as e:
-            if i < retries - 1:
-                logger.warning(f"Błąd pobierania {url}: {e}. Ponawianie za {delay}s... ({i+1}/{retries})")
-                time.sleep(delay)
-            else:
-                topic = "Network Error"
-                msg = f"Nie udało się pobrać {url} po {retries} próbach. Błąd: {e}"
-                logger.error(msg)
-                send_email_alert(topic, msg)
-                raise e
+            if attempt < retries - 1 and not _is_client_error(e):
+                wait = delay * (2 ** attempt)
+                logger.warning(f"Błąd pobierania {url}: {e}. Ponawianie za {wait}s... ({attempt+1}/{retries})")
+                time.sleep(wait)
+                continue
+            msg = f"Nie udało się pobrać {url} (próba {attempt+1}/{retries}). Błąd: {e}"
+            logger.error(msg)
+            if alert:
+                send_email_alert("Network Error", msg)
+            raise

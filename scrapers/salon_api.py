@@ -52,8 +52,10 @@ def format_address_json(street, city, region, country, post_code=None):
 def fetch_all_offers(api_url):
     """Pobiera wszystkie oferty z paginowanego API listy."""
     all_offers = []
+    # alert=True: bez listy ofert nie ma feedu, a nikt inny tego nie zgłosi
     r = scraper_utils.fetch_with_retry(
-        requests, api_url, headers={"User-Agent": "Mozilla/5.0"})
+        requests, api_url, headers={"User-Agent": "Mozilla/5.0"},
+        timeout=30, alert=True)
     data = r.json()
     count = data["result"]["info"]["countOfResults"]
     per_page = data["result"]["info"]["offersPerPage"]
@@ -63,7 +65,8 @@ def fetch_all_offers(api_url):
     for page in range(1, total_pages + 1):
         d = scraper_utils.fetch_with_retry(
             requests, f"{api_url}?page={page}",
-            headers={"User-Agent": "Mozilla/5.0"}).json()
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=30, alert=True).json()
         page_list = d["result"]["list"] or []
         all_offers.extend(page_list)
         print(f"  Strona {page}/{total_pages}: +{len(page_list)}")

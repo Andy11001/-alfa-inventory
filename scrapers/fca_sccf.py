@@ -79,7 +79,8 @@ def _sccf_base(host, slug):
 def fetch_scope(session, host, slug, brand_code):
     """Katalog modeli handlowych marki (comMods)."""
     url = f"{_sccf_base(host, slug)}/scope/{MARKET_PL}{LANG_PL}{brand_code}.json"
-    r = scraper_utils.fetch_with_retry(session, url, timeout=40)
+    # alert=True: bez katalogu nie ma feedu, a nikt inny tego nie zgłosi
+    r = scraper_utils.fetch_with_retry(session, url, timeout=40, alert=True)
     return r.json()
 
 

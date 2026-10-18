@@ -82,8 +82,3 @@ Przydatne zmienne: `SFS_LIMIT=20` (szybki test na 20 autach),
 - `.github/workflows/*.yml` — harmonogramy, canary i publikacja Gistów,
 - `docs/` — protokół SFS, notatki projektowe,
 - `data/` — wynikowe CSV + zdjęcia, `archive/` — lokalne backupy (poza gitem).
-
-## Automatyzacja językowa
-
-`scraper_utils.get_availability_word()` dobiera "dostępny/dostępna" po marce
-(DS → męski, Alfa Romeo → żeński) — nowe modele nie wymagają zmian w kodzie.
