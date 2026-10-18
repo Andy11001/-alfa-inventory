@@ -26,7 +26,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-      - run: pip install requests beautifulsoup4 python-dotenv
+      # curl_cffi — feed modelowy czyta fiat.pl, a ten stoi za Akamai
+      - run: pip install requests beautifulsoup4 python-dotenv curl_cffi
       - run: mkdir -p data
       - name: Run Fiat Inventory Scraper
         env:
@@ -34,6 +35,15 @@ jobs:
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
           EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
         run: PYTHONPATH=. python scrapers/fiat_inventory.py
+      # feed modelowy jest dodatkiem: jego awaria (np. 403 z Akamai)
+      # nie może blokować commita i Gista działającego feedu stockowego
+      - name: Run Fiat Model Feed
+        continue-on-error: true
+        env:
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
+        run: PYTHONPATH=. python scrapers/fiat_model.py
       - name: Commit and push
         run: |
           git config --local user.email "action@github.com"
@@ -55,3 +65,11 @@ jobs:
           token: ${{ secrets.GIST_TOKEN }}
           gist_id: cb240c966485b6d3767712f3fbcc637a
           file_path: data/fiat_lcv_inventory.csv
+      # Feed modelowy ląduje w repo; żeby trafiał też do Gista, załóż nowy
+      # Gist i wklej jego id poniżej (bez tego krok zwróciłby 404).
+      # - name: Update Fiat Model Gist
+      #   uses: exuanbo/actions-deploy-gist@v1
+      #   with:
+      #     token: ${{ secrets.GIST_TOKEN }}
+      #     gist_id: TODO_ID_GISTA
+      #     file_path: data/fiat_osobowe_model.csv

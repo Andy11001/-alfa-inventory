@@ -39,6 +39,15 @@ jobs:
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
           EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
         run: PYTHONPATH=. python scrapers/citroen_inventory.py
+      # feed modelowy jest dodatkiem: jego awaria (np. 403 z Akamai)
+      # nie może blokować commita i Gista działającego feedu stockowego
+      - name: Run Citroen Model Feed
+        continue-on-error: true
+        env:
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
+        run: PYTHONPATH=. python scrapers/citroen_model.py
       - name: Commit and push
         run: |
           git config --local user.email "action@github.com"
@@ -60,3 +69,17 @@ jobs:
           token: ${{ secrets.GIST_TOKEN }}
           gist_id: 24fe8de6e88cdc4ad55dabee9f2095f2
           file_path: data/citroen_lcv_inventory.csv
+      # Feedy modelowe lądują w repo; żeby trafiały też do Gistów, załóż nowe
+      # Gisty i wklej ich id poniżej (bez tego kroki zwróciłyby 404).
+      # - name: Update Citroen Osobowe Model Gist
+      #   uses: exuanbo/actions-deploy-gist@v1
+      #   with:
+      #     token: ${{ secrets.GIST_TOKEN }}
+      #     gist_id: TODO_ID_GISTA
+      #     file_path: data/citroen_osobowe_model.csv
+      # - name: Update Citroen Dostawcze Model Gist
+      #   uses: exuanbo/actions-deploy-gist@v1
+      #   with:
+      #     token: ${{ secrets.GIST_TOKEN }}
+      #     gist_id: TODO_ID_GISTA
+      #     file_path: data/citroen_dostawcze_model.csv
