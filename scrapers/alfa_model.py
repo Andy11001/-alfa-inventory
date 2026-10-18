@@ -14,7 +14,7 @@ def get_dynamic_model_urls(session):
     Automatycznie wykrywa linki do modeli ze strony zbiorczej.
     """
     hub_url = f"{BASE_URL}/modele"
-    print(f"🕵️  Dynamiczne wykrywanie modeli z: {hub_url}")
+    print(f"Dynamiczne wykrywanie modeli z: {hub_url}")
     found_urls = set()
     
     try:
@@ -33,7 +33,7 @@ def get_dynamic_model_urls(session):
                 found_urls.add(full_url)
                 
     except Exception as e:
-        print(f"❌ Błąd podczas wykrywania modeli: {e}")
+        print(f"Błąd podczas wykrywania modeli: {e}")
         # Fallback do kluczowych modeli w razie awarii discovery
         return [
             f"{BASE_URL}/modele/junior-ibrida",
@@ -42,7 +42,7 @@ def get_dynamic_model_urls(session):
             f"{BASE_URL}/modele/giulia"
         ]
         
-    print(f"✅ Znaleziono {len(found_urls)} stron modeli.")
+    print(f"Znaleziono {len(found_urls)} stron modeli.")
     return sorted(list(found_urls))
 
 def extract_model_code(html_text):
@@ -136,7 +136,7 @@ def extract_offers_from_text(text, model_code=""):
     return offers
 
 def main():
-    print(f"🚀 Rozpoczynam pobieranie ofert modelowych (Auto-Discovery)...")
+    print(f"Rozpoczynam pobieranie ofert modelowych (Auto-Discovery)...")
     session = requests.Session()
     session.headers.update({"User-Agent": "Mozilla/5.0"})
     
@@ -147,7 +147,7 @@ def main():
     processed_titles = set()
 
     for url in target_urls:
-        print(f"➡️ Analiza: {url}")
+        print(f"Analiza: {url}")
         try:
             r = scraper_utils.fetch_with_retry(session, url, timeout=15)
             if r.status_code == 200:
@@ -156,7 +156,7 @@ def main():
                 # Krok 2: Ekstrakcja kodu modelu (MVSS base)
                 model_code = extract_model_code(html_text)
                 if model_code:
-                    print(f"   ℹ️ Wykryto kod modelu: {model_code}")
+                    print(f"   Wykryto kod modelu: {model_code}")
                 
                 # Ekstrakcja ofert
                 clean_text = BeautifulSoup(html_text, 'html.parser').get_text(" ", strip=True)
@@ -167,9 +167,9 @@ def main():
                     if off['title'] not in processed_titles:
                         all_found_offers.append(off)
                         processed_titles.add(off['title'])
-                        print(f"   ✅ Oferta: {off['title']} ({off['installment_netto']} zł/mc)")
+                        print(f"   Oferta: {off['title']} ({off['installment_netto']} zł/mc)")
         except Exception as e: 
-            print(f"   ⚠️ Błąd: {e}")
+            print(f"   Błąd: {e}")
             continue
 
     if all_found_offers:
@@ -179,22 +179,22 @@ def main():
         # Bezpieczny zapis z scraper_utils
         from scraper_utils import safe_save_csv
         if safe_save_csv(all_found_offers, fieldnames, OUTPUT_FILE, min_rows_threshold=1):
-             print(f"\n💾 Zapisano {len(all_found_offers)} ofert do pliku pośredniego.")
+             print(f"\nZapisano {len(all_found_offers)} ofert do pliku pośredniego.")
         else:
-             print(f"\n⚠️ Nie udało się zapisać pliku {OUTPUT_FILE}")
+             print(f"\nUWAGA: Nie udało się zapisać pliku {OUTPUT_FILE}")
              return # Przerywamy, nie generujemy feedu finalnego na starych/pustych danych
         
         # Trigger generation of the final feed
         try:
             import generate_full_model_feed
-            print("🚀 Uruchamianie generatora finalnego feedu...")
+            print("Uruchamianie generatora finalnego feedu...")
             generate_full_model_feed.main()
         except ImportError:
-            print("⚠️ Nie można zaimportować generate_full_model_feed.")
+            print("UWAGA: Nie można zaimportować generate_full_model_feed.")
         except Exception as e:
-            print(f"❌ Błąd podczas generowania finalnego feedu: {e}")
+            print(f"Błąd podczas generowania finalnego feedu: {e}")
     else:
-        print("❌ Nie znaleziono żadnych ofert.")
+        print("BŁĄD: Nie znaleziono żadnych ofert.")
 
 if __name__ == "__main__":
     main()

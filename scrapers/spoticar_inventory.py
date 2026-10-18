@@ -59,7 +59,7 @@ def init_session():
         session.get(f"{BASE_URL}/", timeout=15)
         time.sleep(0.5)
     except Exception as e:
-        print(f"  ⚠ Could not seed session: {e}")
+        print(f"  UWAGA: Could not seed session: {e}")
     return session
 
 
@@ -77,9 +77,9 @@ def fetch_page(session, page_num, retries=3):
             if r.status_code == 200:
                 return r.json()
             else:
-                print(f"  ⚠ Page {page_num}: HTTP {r.status_code} (attempt {attempt+1}/{retries})")
+                print(f"  UWAGA: Page {page_num}: HTTP {r.status_code} (attempt {attempt+1}/{retries})")
         except Exception as e:
-            print(f"  ⚠ Page {page_num}: error {e} (attempt {attempt+1}/{retries})")
+            print(f"  UWAGA: Page {page_num}: error {e} (attempt {attempt+1}/{retries})")
         time.sleep(2 * (attempt + 1))
     return None
 
@@ -248,7 +248,7 @@ def parse_card(card):
         }
 
     except Exception as e:
-        print(f"  ⚠ Card parse error: {e}")
+        print(f"  UWAGA: Card parse error: {e}")
         return None
 
 
@@ -280,7 +280,7 @@ def main():
     # Fetch first page to get total count
     first_page = fetch_page(session, 1)
     if not first_page:
-        print("  ❌ Nie udało się pobrać pierwszej strony API. Kończę.")
+        print("  BŁĄD: Nie udało się pobrać pierwszej strony API. Kończę.")
         return
 
     total = get_total_count(first_page)
@@ -303,7 +303,7 @@ def main():
     for page_num in range(2, total_pages + 1):
         data = fetch_page(session, page_num)
         if not data:
-            print(f"  ⚠ Strona {page_num}: brak danych — pomijam.")
+            print(f"  UWAGA: Strona {page_num}: brak danych — pomijam.")
             continue
 
         html = data.get("renderEntities", "")

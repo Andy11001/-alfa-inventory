@@ -49,7 +49,7 @@ def main():
     try:
         all_offers = salon_api.fetch_all_offers(API_URL)
     except Exception as e:
-        print(f"  ❌ Błąd pobierania listy: {e}")
+        print(f"  Błąd pobierania listy: {e}")
         return
 
     limit = int(os.environ.get("SALON_LIMIT", "0"))

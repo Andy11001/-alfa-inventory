@@ -71,7 +71,7 @@ def main():
     try:
         all_offers = salon_api.fetch_all_offers(API_URL)
     except Exception as e:
-        print(f"  ❌ Błąd pobierania listy: {e}")
+        print(f"  Błąd pobierania listy: {e}")
         return
 
     limit = int(os.environ.get("SALON_LIMIT", "0"))
@@ -79,7 +79,7 @@ def main():
         all_offers = all_offers[:limit]
 
     if not all_offers:
-        print("\n  ℹ️ API nie zwróciło żadnych ofert — Abarth ma pusty stock.")
+        print("\n  API nie zwróciło żadnych ofert — Abarth ma pusty stock.")
         print("  Zostawiam poprzedni feed bez zmian (to nie jest awaria).")
         write_header_only(OUTPUT_FILE)
         return
@@ -90,7 +90,7 @@ def main():
         get_body_style, get_drivetrain)
 
     if not rows:
-        print("\n  ⚠️ API zwróciło oferty, ale żadnej nie dało się przetworzyć.")
+        print("\n  UWAGA: API zwróciło oferty, ale żadnej nie dało się przetworzyć.")
         scraper_utils.send_email_alert(
             "Abarth: 0 wierszy z niepustego API",
             f"API zwróciło {len(all_offers)} ofert, feed wyszedł pusty — "

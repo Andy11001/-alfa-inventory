@@ -203,7 +203,7 @@ def main():
         mvss, target_mid = find_mvss(title, mapping, live_colors_db, forced_mid=model_code)
             
         if not mvss:
-            # print(f"⚠️ Brak MVSS dla: {title}")
+            # print(f"UWAGA: Brak MVSS dla: {title}")
             continue
 
         template_params = img_templates.get(mvss)
@@ -211,7 +211,7 @@ def main():
             template_params = fallback_templates[target_mid]
             
         if not template_params:
-            # print(f"❌ Brak szablonu obrazka dla: {title}")
+            # print(f"BŁĄD: Brak szablonu obrazka dla: {title}")
             continue
 
         colors_to_process = []

@@ -64,7 +64,7 @@ def fetch_api_versions(api_base, derived_model_id):
         r.raise_for_status()
         return r.json()
     except Exception as e:
-        print(f"  ⚠ API error for {derived_model_id}: {e}")
+        print(f"  UWAGA: API error for {derived_model_id}: {e}")
         return []
 
 
@@ -76,7 +76,7 @@ def fetch_all_derived_models(api_base):
         r.raise_for_status()
         return r.json()
     except Exception as e:
-        print(f"  ⚠ API derivedModels error: {e}")
+        print(f"  UWAGA: API derivedModels error: {e}")
         return []
 
 
@@ -240,7 +240,7 @@ def scrape_promo_prices(driver, url):
                             prices[key] = price_val
 
     except Exception as e:
-        print(f"  ⚠ Selenium error on {url}: {e}")
+        print(f"  UWAGA: Selenium error on {url}: {e}")
 
     return prices
 
@@ -378,7 +378,7 @@ def main():
     print("\n[2/4] Inicjalizacja Selenium do scrapowania cen...")
     driver = init_driver()
     if not driver:
-        print("❌ Błąd Selenium init_driver.")
+        print("Błąd Selenium init_driver.")
         return
 
     all_osobowe = []
@@ -406,12 +406,12 @@ def main():
 
             api_base = API_BASE_BTOC if api_type == "btoc" else API_BASE_BTOB
 
-            print(f"  📦 {model_label} ({model_id}) [{'dostawczy' if is_commercial else 'osobowy'}]")
+            print(f"  {model_label} ({model_id}) [{'dostawczy' if is_commercial else 'osobowy'}]")
 
             # 3a. Get structured data from API
             versions = fetch_api_versions(api_base, model_id)
             if not versions:
-                print(f"    ⚠ Brak wersji w API — pomijam.")
+                print(f"    UWAGA: Brak wersji w API — pomijam.")
                 continue
 
             trims_data = extract_model_data_from_api(versions)
@@ -423,13 +423,13 @@ def main():
             # 3b. Get promotional prices from opel.pl
             page_url = get_model_url(model_label)
             promo_prices = {}
-            print(f"    🌐 Scrapuję ceny z: {page_url}")
+            print(f"    Scrapuję ceny z: {page_url}")
             promo_prices = scrape_promo_prices(driver, page_url)
             print(f"    Znaleziono {len(promo_prices)} cen promocyjnych")
             for (t, f), p in sorted(promo_prices.items()):
                 print(f"      {t:20s} | {f:15s} | {p:>10,} zł")
             if not promo_prices:
-                print(f"    ⚠ Brak cen promocyjnych — użyję cen z API")
+                print(f"    UWAGA: Brak cen promocyjnych — użyję cen z API")
 
             # 3c. Generate rows
             rows = generate_feed_rows(model_label, trims_data, promo_prices, page_url, is_commercial)
@@ -443,7 +443,7 @@ def main():
                     else:
                         all_osobowe.append(r)
 
-            print(f"    ✅ Wygenerowano {len(rows)} wierszy\n")
+            print(f"    Wygenerowano {len(rows)} wierszy\n")
 
     finally:
         driver.quit()

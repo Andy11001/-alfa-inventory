@@ -38,7 +38,7 @@ def load_colors_json():
         with open(COLORS_JSON_FILE, 'r', encoding='utf-8') as f:
             return json.load(f)
     except Exception as e:
-        print(f"❌ Błąd ładowania ds_colors.json: {e}")
+        print(f"Błąd ładowania ds_colors.json: {e}")
         return {}
 
 def load_stock_history():
@@ -48,16 +48,16 @@ def load_stock_history():
         with open(HISTORY_FILE, 'r', encoding='utf-8') as f:
             return json.load(f)
     except Exception as e:
-        print(f"❌ Błąd ładowania historii stocku: {e}")
+        print(f"Błąd ładowania historii stocku: {e}")
         return {}
 
 def save_stock_history(history):
     try:
         with open(HISTORY_FILE, 'w', encoding='utf-8') as f:
             json.dump(history, f, indent=4, ensure_ascii=False)
-        print("✅ Zapisano historię kolorów stockowych.")
+        print("Zapisano historię kolorów stockowych.")
     except Exception as e:
-        print(f"❌ Błąd zapisu historii stocku: {e}")
+        print(f"Błąd zapisu historii stocku: {e}")
 
 def normalize_model_name_for_filename(model_name):
     """
@@ -95,13 +95,13 @@ def get_menu_structure(session):
     Parsuje komponent WlUnifiedHeader ze strony gamy, aby uzyskać 
     oficjalną listę modeli i ich obrazki z menu poprzez JSON w data-props.
     """
-    print(f"🔍 Pobieranie struktury menu z: {RANGE_URL}")
+    print(f"Pobieranie struktury menu z: {RANGE_URL}")
     models_list = []
     
     try:
         r = scraper_utils.fetch_with_retry(session, RANGE_URL, timeout=15)
         if r.status_code != 200:
-            print(f"❌ Błąd HTTP: {r.status_code}")
+            print(f"Błąd HTTP: {r.status_code}")
             return []
 
         soup = BeautifulSoup(r.text, 'html.parser')
@@ -109,19 +109,19 @@ def get_menu_structure(session):
         # Szukamy konfiguracji nagłówka (menu)
         header = soup.find("div", attrs={"data-app-wl": "WlUnifiedHeader"})
         if not header:
-            print("❌ Nie znaleziono komponentu WlUnifiedHeader")
+            print("BŁĄD: Nie znaleziono komponentu WlUnifiedHeader")
             return []
 
         # W nowej wersji dane są w atrybucie data-props jako JSON
         props_str = header.get("data-props")
         if not props_str:
-            print("❌ Komponent WlUnifiedHeader nie zawiera data-props")
+            print("BŁĄD: Komponent WlUnifiedHeader nie zawiera data-props")
             return []
             
         try:
             props = json.loads(props_str)
         except json.JSONDecodeError:
-            print("❌ Błąd parsowania JSON z data-props")
+            print("Błąd parsowania JSON z data-props")
             return []
             
         # Szukamy menu z modelami w hamburgermenu->menu
@@ -133,7 +133,7 @@ def get_menu_structure(session):
                 break
                 
         if not model_menu:
-            print("❌ Nie znaleziono 'whitelabelmodelmenu' w strukturze JSON")
+            print("BŁĄD: Nie znaleziono 'whitelabelmodelmenu' w strukturze JSON")
             return []
 
         # Interesuje nas lista subModelTagMapping
@@ -173,9 +173,9 @@ def get_menu_structure(session):
         models_list = list(unique_models.values())
 
     except Exception as e:
-        print(f"❌ Błąd parsowania menu: {e}")
+        print(f"Błąd parsowania menu: {e}")
 
-    print(f"✅ Znaleziono {len(models_list)} modeli w menu bocznym.")
+    print(f"Znaleziono {len(models_list)} modeli w menu bocznym.")
     return models_list
 
 def get_price_from_page(url, session):
@@ -243,7 +243,7 @@ def get_price_from_page(url, session):
         return p, i, full_legal
 
     except Exception as e:
-        print(f"⚠️ Błąd pobierania danych ze strony {url}: {e}")
+        print(f"Błąd pobierania danych ze strony {url}: {e}")
         return 0, 0, ""
 
 def load_inventory_colors():
@@ -257,7 +257,7 @@ def load_inventory_colors():
     """
     inv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "ds_inventory.csv")
     if not os.path.exists(inv_path):
-        print("⚠️ Warning: ds_inventory.csv not found. Skipping color fallback.")
+        print("UWAGA: ds_inventory.csv not found. Skipping color fallback.")
         return {}
 
     color_map = collections.defaultdict(dict)
@@ -415,17 +415,17 @@ def extract_model_data_from_api(versions):
 
 
 def run():
-    print("🕷️ Rozpoczynam pobieranie (Menu -> Modele)...")
+    print("Rozpoczynam pobieranie (Menu -> Modele)...")
     session = requests.Session()
     session.headers.update({"User-Agent": "Mozilla/5.0"})
 
     # 1. Pobierz modele z menu
     menu_models = get_menu_structure(session)
     
-    print("📦 Pobieranie listy modeli z API dsautomobiles...")
+    print("Pobieranie listy modeli z API dsautomobiles...")
     api_models = fetch_all_derived_models()
     if not api_models:
-        print("❌ Nie udało się pobrać modeli z API. Przerwanie.")
+        print("BŁĄD: Nie udało się pobrać modeli z API. Przerwanie.")
         return
 
     # Słownik do szybkiego szukania modeli w API { "DS4": model_id }
@@ -445,12 +445,12 @@ def run():
         if url in seen: continue
         seen.add(url)
         
-        print(f"\n➡️ Przetwarzanie: {item['title']} ({url})")
+        print(f"\nPrzetwarzanie: {item['title']} ({url})")
         price, installment, disclaimer = get_price_from_page(url, session)
         
         # Skip if no price and no installment
         if price == 0 and installment == 0:
-            print(f"   ⚠️ Pominięto {item['title']} - brak ceny i raty.")
+            print(f"   UWAGA: Pominięto {item['title']} - brak ceny i raty.")
             continue
 
         # Dopasowanie do API (menu zwraca np. "DS 4 E-TENSE", API ma bazowe "DS 4")
@@ -479,7 +479,7 @@ def run():
                 break
                 
         if not matched_api_id:
-            print(f"   ⚠️ Nie dopasowano '{item['title']}' do żadnego modelu API. Tworzę wpis podstawowy z danych menu.")
+            print(f"   UWAGA: Nie dopasowano '{item['title']}' do żadnego modelu API. Tworzę wpis podstawowy z danych menu.")
             # Fallback: model istnieje w menu ale nie w API - tworzymy podstawowy wpis
             amount_price_str = f"{installment} PLN" if installment else ""
             downpayment_val = int(price * 0.10) if price else 0
@@ -516,20 +516,20 @@ def run():
                 "emission_image_link": ""
             }
             final_data.append(fallback_record)
-            print(f"   ✅ Dodano wpis podstawowy dla {base_model_label}")
+            print(f"   Dodano wpis podstawowy dla {base_model_label}")
             continue
             
-        print(f"   🛠️ Pobieranie wariantów API dla bazowego {base_model_label} ({matched_api_id})...")
+        print(f"   Pobieranie wariantów API dla bazowego {base_model_label} ({matched_api_id})...")
         versions = fetch_api_versions(matched_api_id)
         if not versions:
-            print("   ⚠️ Brak wersji w API.")
+            print("   UWAGA: Brak wersji w API.")
             continue
             
         trims_data = extract_model_data_from_api(versions)
         trim_count = len(trims_data)
         engine_count = sum(len(t["engines"]) for t in trims_data.values())
         color_count = sum(len(t["colors"]) for t in trims_data.values())
-        print(f"   ✅ API: {trim_count} trimów, {engine_count} silników, {color_count} kolorów")
+        print(f"   API: {trim_count} trimów, {engine_count} silników, {color_count} kolorów")
         
         # Generowanie permutacji dla Feed'a (Ceny promocyjne "od" są te same dla modelu, warianty zdjęć/nazw się zmieniają)
         for trim_name, data in trims_data.items():
@@ -640,9 +640,9 @@ def run():
         data_to_save = [{k: row.get(k, "") for k in fieldnames} for row in final_data]
         
         if safe_save_csv(data_to_save, fieldnames, OUTPUT_FILE, min_rows_threshold=1):
-            print(f"✅ Zapisano {len(final_data)} ofert do {OUTPUT_FILE} (Schema zgodna z Alfa Final)")
+            print(f"Zapisano {len(final_data)} ofert do {OUTPUT_FILE} (Schema zgodna z Alfa Final)")
         else:
-            print(f"⚠️ Nie udało się zapisać pliku {OUTPUT_FILE}")
+            print(f"UWAGA: Nie udało się zapisać pliku {OUTPUT_FILE}")
 
 if __name__ == "__main__":
     run()

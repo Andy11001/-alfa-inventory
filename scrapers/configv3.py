@@ -73,7 +73,7 @@ def fetch_derived_models(session, api_base):
             time.sleep(1)
             return r.json()
         except Exception as e:
-            print(f"  ⚠ derivedModels ({attempt + 1}/3): {e}")
+            print(f"  UWAGA: derivedModels ({attempt + 1}/3): {e}")
             time.sleep(3)
     return []
 
@@ -87,7 +87,7 @@ def fetch_versions(session, api_base, derived_model_id):
             time.sleep(1)
             return r.json()
         except Exception as e:
-            print(f"  ⚠ versions {derived_model_id} ({attempt + 1}/3): {e}")
+            print(f"  UWAGA: versions {derived_model_id} ({attempt + 1}/3): {e}")
             time.sleep(3)
     return []
 

@@ -96,7 +96,7 @@ def fetch_com_mod(session, host, slug, brand_code, com_mod):
         r = scraper_utils.fetch_with_retry(session, url, retries=2, timeout=60)
         return r.json()
     except Exception as e:
-        print(f"    ⚠ {cod}: nie pobrano cennika ({e})")
+        print(f"    UWAGA: {cod}: nie pobrano cennika ({e})")
         return None
 
 
@@ -228,7 +228,7 @@ def fetch_model_cards(session, host):
         r = scraper_utils.fetch_with_retry(session, f"https://{host}/",
                                            retries=2, timeout=40)
     except Exception as e:
-        print(f"  ⚠ Nie pobrano strony głównej {host}: {e}")
+        print(f"  UWAGA: Nie pobrano strony głównej {host}: {e}")
         return []
 
     cards = []
@@ -258,7 +258,7 @@ def fetch_sitemap_pages(session, host, url_pattern):
         r = scraper_utils.fetch_with_retry(
             session, f"https://{host}/sitemap.xml", retries=2, timeout=40)
     except Exception as e:
-        print(f"  ⚠ Brak sitemapy {host}: {e}")
+        print(f"  UWAGA: Brak sitemapy {host}: {e}")
         return []
     rx = re.compile(url_pattern)
     urls = sorted({loc for loc in re.findall(r"<loc>([^<]+)</loc>", r.text)
@@ -463,7 +463,7 @@ def scrape_brand(brand):
         model_name = com_mod_name(cm_json, com.get("desc"))
         versions = versions_from_cm(cm_json)
         if not versions:
-            print(f"  ⚠ {model_name}: brak wersji z ceną — pomijam")
+            print(f"  UWAGA: {model_name}: brak wersji z ceną — pomijam")
             continue
 
         match = match_candidate(model_name, candidates,
@@ -495,7 +495,7 @@ def scrape_brand(brand):
         if not image:
             notes.append("bez zdjęcia")
         suffix = f"  ({', '.join(notes)})" if notes else ""
-        print(f"  ✅ {model_name}: {len(versions)} wersji{suffix}")
+        print(f"  {model_name}: {len(versions)} wersji{suffix}")
 
     # MVSS bywa powtórzony między modelami handlowymi (np. ten sam wariant
     # w dwóch grupach) — vehicle_id musi zostać unikalny.

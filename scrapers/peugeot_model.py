@@ -97,7 +97,7 @@ def fetch_api_versions(api_base, derived_model_id):
             time.sleep(1)
             return r.json()
         except Exception as e:
-            print(f'  ⚠ API error for {derived_model_id} (próba {i+1}/3): {e}')
+            print(f'  UWAGA: API error for {derived_model_id} (próba {i+1}/3): {e}')
             time.sleep(3)
     return []
 
@@ -110,7 +110,7 @@ def fetch_all_derived_models(api_base):
             time.sleep(1)
             return r.json()
         except Exception as e:
-            print(f'  ⚠ API derivedModels error (próba {i+1}/3): {e}')
+            print(f'  UWAGA: API derivedModels error (próba {i+1}/3): {e}')
             time.sleep(3)
     return []
 
@@ -200,7 +200,7 @@ def scrape_model_lease_price(url):
         if prices_found:
             return min(prices_found)
     except Exception as e:
-        print(f"  ⚠ Scrape error na {url}: {e}")
+        print(f"  UWAGA: Scrape error na {url}: {e}")
     return None
 
 def generate_feed_rows(model_label, trims_data, is_commercial):
@@ -319,11 +319,11 @@ def main():
 
         is_commercial = (api_type == "btob")
         api_base = API_BASE_BTOC if api_type == "btoc" else API_BASE_BTOB
-        print(f"  📦 {model_label} ({model_id}) [{'dostawczy' if is_commercial else 'osobowy'}]")
+        print(f"  {model_label} ({model_id}) [{'dostawczy' if is_commercial else 'osobowy'}]")
 
         versions = fetch_api_versions(api_base, model_id)
         if not versions:
-            print(f"    ⚠ Brak wersji w API — pomijam.")
+            print(f"    UWAGA: Brak wersji w API — pomijam.")
             continue
 
         trims_data = extract_model_data_from_api(versions)
@@ -341,7 +341,7 @@ def main():
                     all_dostawcze.append(r)
                 else:
                     all_osobowe.append(r)
-        print(f"    ✅ Wygenerowano {len(rows)} wierszy\n")
+        print(f"    Wygenerowano {len(rows)} wierszy\n")
 
     print("\n[3/3] Zapisywanie feedów modelowych...")
     fieldnames = [

@@ -432,7 +432,7 @@ def get_inventory_rates(brand_key, links, progress_label="aut"):
     if coverage < SELENIUM_RESCUE_THRESHOLD and \
             os.environ.get("SFS_DISABLE_SELENIUM_RESCUE") != "1":
         missing = [l for l in links if l not in rates][:SELENIUM_RESCUE_CAP]
-        print(f"  ⚠ Pokrycie API tylko {coverage:.0%} — awaryjny Selenium "
+        print(f"  UWAGA: Pokrycie API tylko {coverage:.0%} — awaryjny Selenium "
               f"dla {len(missing)} aut...")
         rescued = _selenium_rescue(missing)
         for link, rate in rescued.items():

@@ -53,7 +53,7 @@ for brand, api in WP_APIS.items():
     print(f"\n=== {brand} ===")
     links = sample_links(api)
     if not links:
-        print("  ⚠ Nie udało się pobrać linków z WP API")
+        print("  UWAGA: Nie udało się pobrać linków z WP API")
         failed.append(brand)
         continue
     t0 = time.monotonic()
@@ -68,6 +68,6 @@ for brand, api in WP_APIS.items():
 
 print("\n" + "=" * 50)
 if failed:
-    print(f"❌ BRAK RAT dla: {', '.join(failed)} — sprawdź docs/SFS_CALCULATOR.md")
+    print(f"BŁĄD: BRAK RAT dla: {', '.join(failed)} — sprawdź docs/SFS_CALCULATOR.md")
     sys.exit(1)
-print("✅ Wszystkie marki zwracają raty przez API SFS.")
+print("Wszystkie marki zwracają raty przez API SFS.")

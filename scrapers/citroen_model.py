@@ -78,7 +78,7 @@ def fetch_lease(session, url, cache):
             text = BeautifulSoup(r.text, "html.parser").get_text(" ", strip=True)
             lease = scraper_utils.extract_lease_price(text)
     except Exception as e:
-        print(f"    ⚠ nie pobrano {url}: {e}")
+        print(f"    UWAGA: nie pobrano {url}: {e}")
     cache[url] = lease
     return lease
 
@@ -102,7 +102,7 @@ def scrape_segment(session, api_base, label, lease_cache, skip_labels=()):
 
         versions = configv3.fetch_versions(session, api_base, model_id)
         if not versions:
-            print(f"    ⚠ {model_label}: brak wersji w API")
+            print(f"    UWAGA: {model_label}: brak wersji w API")
             continue
 
         trims = configv3.extract_trims(versions, render_url)
@@ -117,7 +117,7 @@ def scrape_segment(session, api_base, label, lease_cache, skip_labels=()):
 
         seen_labels.append(model_label)
         note = "" if model_label in MODEL_LINKS else "  (link zbiorczy)"
-        print(f"    ✅ {model_label}: {len(trims)} trimów, "
+        print(f"    {model_label}: {len(trims)} trimów, "
               f"{len(model_rows)} wierszy{note}")
     return rows, seen_labels
 

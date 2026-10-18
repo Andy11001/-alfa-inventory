@@ -74,7 +74,7 @@ def extract_prices(html_content):
     return offers
 
 def main():
-    print(f"🚀 Rozpoczynam pobieranie ofert modelowych Leapmotor z: {BASE_URL}")
+    print(f"Rozpoczynam pobieranie ofert modelowych Leapmotor z: {BASE_URL}")
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     
     driver = None
@@ -87,10 +87,10 @@ def main():
         offers = extract_prices(html)
         
         if not offers:
-            print("❌ Nie znaleziono ofert na stronie głównej.")
+            print("BŁĄD: Nie znaleziono ofert na stronie głównej.")
             return
             
-        print(f"✅ Znaleziono {len(offers)} ofert bazowych.")
+        print(f"Znaleziono {len(offers)} ofert bazowych.")
         for off in offers:
             print(f"   - {off['title']} od {off['price_brutto']} PLN")
             
@@ -98,12 +98,12 @@ def main():
         
         from scraper_utils import safe_save_csv
         if safe_save_csv(offers, fieldnames, OUTPUT_FILE, min_rows_threshold=1):
-             print(f"\n💾 Zapisano {len(offers)} ofert do {OUTPUT_FILE}")
+             print(f"\nZapisano {len(offers)} ofert do {OUTPUT_FILE}")
         else:
-             print(f"\n⚠️ Nie udało się zapisać pliku {OUTPUT_FILE}")
+             print(f"\nUWAGA: Nie udało się zapisać pliku {OUTPUT_FILE}")
 
     except Exception as e:
-        print(f"❌ Wystąpił błąd: {e}")
+        print(f"BŁĄD: Wystąpił błąd: {e}")
     finally:
         if driver:
             try:
