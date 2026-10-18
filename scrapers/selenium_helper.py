@@ -34,8 +34,9 @@ def _trigger_wp_rocket(driver):
     try:
         body = driver.find_element(By.TAG_NAME, "body")
         ActionChains(driver).move_to_element_with_offset(body, 100, 100).perform()
-    except:
-        pass
+    except Exception as e:
+        # zdarzenia JS niżej i tak wybudzą lazy loading
+        print(f"  ActionChains nie zadziałało ({e}), zostają zdarzenia JS.")
     # JS-dispatched events as backup
     driver.execute_script("""
         document.dispatchEvent(new MouseEvent('mousemove', {clientX: 100, clientY: 100}));

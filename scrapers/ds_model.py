@@ -197,7 +197,8 @@ def get_price_from_page(url, session):
                     lr = scraper_utils.fetch_with_retry(session, full_legal_url, timeout=5)
                     full_legal = BeautifulSoup(lr.text, 'html.parser').get_text(" ", strip=True)
                     break
-            except: pass
+            except Exception as e:
+                print(f"   Nie pobrano disclaimera z popupu {url}: {e}")
             
         if not full_legal:
             match = re.search(r'(/[\w\d\-\/]*/legal-mentions\.html)', r.text)
@@ -206,7 +207,8 @@ def get_price_from_page(url, session):
                     full_legal_url = urljoin(BASE_URL, match.group(1))
                     lr = scraper_utils.fetch_with_retry(session, full_legal_url, timeout=5)
                     full_legal = BeautifulSoup(lr.text, 'html.parser').get_text(" ", strip=True)
-                except: pass
+                except Exception as e:
+                    print(f"   Nie pobrano legal-mentions {url}: {e}")
 
         # 2. Pobieramy cenę/ratę
         p, i = 0, 0
@@ -494,7 +496,7 @@ def run():
                 "rodzaj": "modelowy",
                 "make": "DS Automobiles",
                 "model": base_model_label,
-                "year": "2025",
+                "year": scraper_utils.current_year(),
                 "link": url,
                 "image_link": item['image_url'],
                 "exterior_color": "Standard",
@@ -585,7 +587,7 @@ def run():
                     "rodzaj": "modelowy",
                     "make": "DS Automobiles",
                     "model": base_model_label,
-                    "year": "2025", 
+                    "year": scraper_utils.current_year(), 
                     "link": url,
                     "trim": trim_name,
                     "offer_disclaimer": disclaimer,

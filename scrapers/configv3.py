@@ -47,7 +47,6 @@ ENERGY_MAP = {
     "10": "Plug-in Hybrid",
 }
 
-CURRENT_YEAR = "2026"
 
 
 def make_session(brand_site):
@@ -199,12 +198,12 @@ def build_rows(make_label, id_prefix, model_label, trims, page_url, lease,
                     # skrzynia w opisie, bo bywa jedyną różnicą między dwoma
                     # wierszami tego samego trimu i silnika (i ceny!)
                     "description": " · ".join(
-                        p for p in [f"Nowy {full_title}", engine["engine"],
+                        p for p in [scraper_utils.with_new_prefix(full_title), engine["engine"],
                                     engine["transmission"], "Sprawdź ofertę!"] if p),
                     "rodzaj": "modelowy",
                     "make": make_label,
                     "model": model_name,
-                    "year": CURRENT_YEAR,
+                    "year": scraper_utils.current_year(),
                     "link": page_url,
                     "image_link": color["image"],
                     "exterior_color": color["name"],

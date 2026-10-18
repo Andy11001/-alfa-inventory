@@ -315,7 +315,7 @@ def generate_feed_rows(model_label, trims_data, promo_prices, page_url, is_comme
             full_title = f"{model_name} {trim_label}" if trim_label != "Standard" else model_name
 
             tiktok_title = f"{full_title} · od {price_val} PLN"
-            tiktok_desc = f"Nowy {full_title} · {engine_desc} · Dowiedz się więcej!"
+            tiktok_desc = f"{scraper_utils.with_new_prefix(full_title)} · {engine_desc} · Dowiedz się więcej!"
 
             for color in colors:
                 color_name = color["name"]
@@ -333,7 +333,7 @@ def generate_feed_rows(model_label, trims_data, promo_prices, page_url, is_comme
                     "rodzaj": "modelowy",
                     "make": "Opel",
                     "model": model_name,
-                    "year": "2025",
+                    "year": scraper_utils.current_year(),
                     "link": page_url,
                     "image_link": img_url,
                     "exterior_color": color_name,

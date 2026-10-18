@@ -108,8 +108,8 @@ def main():
         if driver:
             try:
                 driver.quit()
-            except:
-                pass
+            except Exception as e:
+                print(f"Nie udało się zamknąć przeglądarki: {e}")
 
 if __name__ == "__main__":
     main()

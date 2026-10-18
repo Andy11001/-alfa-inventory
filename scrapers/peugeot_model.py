@@ -246,7 +246,7 @@ def generate_feed_rows(model_label, trims_data, is_commercial):
                 price_str = f'{api_price} PLN'
                 tiktok_title = f'{full_title} · od {api_price} PLN'
             
-            tiktok_desc = f'Nowy {full_title} · {engine_desc} · Sprawdź ofertę!'
+            tiktok_desc = f'{scraper_utils.with_new_prefix(full_title)} · {engine_desc} · Sprawdź ofertę!'
 
             for color in colors:
                 color_name = color["name"]
@@ -264,7 +264,7 @@ def generate_feed_rows(model_label, trims_data, is_commercial):
                     "rodzaj": "modelowy",
                     "make": "Peugeot",
                     "model": model_name,
-                    "year": "2025",
+                    "year": scraper_utils.current_year(),
                     "link": page_url,
                     "image_link": img_url,
                     "exterior_color": color_name,

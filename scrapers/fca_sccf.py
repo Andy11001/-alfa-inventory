@@ -43,7 +43,6 @@ except ModuleNotFoundError:
 MARKET_PL = "3123"
 LANG_PL = "D"
 VAT_RATE = 1.23
-CURRENT_YEAR = "2026"
 
 # Format feedu modelowego — wspólny z peugeot_model.py / opel_model.py / ds_model.py
 FIELDNAMES = [
@@ -401,11 +400,11 @@ def build_rows(make_label, id_prefix, model_name, version, page_url, image,
     return {
         "vehicle_id": f"{id_prefix}-{version['mvss']}",
         "title": tiktok_title,
-        "description": f"Nowy {full_title} · {engine} · Sprawdź ofertę!",
+        "description": f"{scraper_utils.with_new_prefix(full_title)} · {engine} · Sprawdź ofertę!",
         "rodzaj": "modelowy",
         "make": make_label,
         "model": f"{make_label} {model_name}",
-        "year": CURRENT_YEAR,
+        "year": scraper_utils.current_year(),
         "link": page_url,
         "image_link": image,
         "exterior_color": "Standard",
