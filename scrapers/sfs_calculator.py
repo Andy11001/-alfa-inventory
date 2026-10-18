@@ -35,6 +35,7 @@ Samonaprawialność:
 import os
 import re
 import json
+import math
 import time
 import uuid
 import threading
@@ -97,6 +98,7 @@ PAGE_WORKERS = int(os.environ.get("SFS_PAGE_WORKERS", "8"))
 DETECT_CHUNK = int(os.environ.get("SFS_DETECT_CHUNK", "40"))
 SELENIUM_RESCUE_THRESHOLD = float(os.environ.get("SFS_RESCUE_THRESHOLD", "0.5"))
 SELENIUM_RESCUE_CAP = int(os.environ.get("SFS_RESCUE_CAP", "150"))
+MAX_CONSECUTIVE_FAILURES = int(os.environ.get("SFS_MAX_CONSECUTIVE_FAILURES", "8"))
 
 _thread_local = threading.local()
 
@@ -241,8 +243,17 @@ def detect_products_batch(brand_slug, origin, items, chunk_size=DETECT_CHUNK,
            f"{brand_slug}/salon/production"
            f"?withSolData=true&withCalculationParams=true")
     results = {}
+    # Bezpiecznik: przy leżącym API rekurencyjny podział paczki 40 aut dawał
+    # ~240 POST-ów po 60 s, czyli więcej niż limit joba. Próg jest wyższy niż
+    # głębokość podziału (40 -> 20 -> 10 -> 5 -> 3 -> 2 -> 1), więc pojedyncze
+    # zepsute auto go nie wyzwoli — po drodze zawsze trafi się udana połówka.
+    max_failures = max(MAX_CONSECUTIVE_FAILURES,
+                       math.ceil(math.log2(max(2, chunk_size))) + 2)
+    state = {"failures": 0, "aborted": False}
 
     def post_chunk(chunk, attempt=0):
+        if state["aborted"]:
+            return False
         body, keymap = {}, {}
         for key, vehicle, fields in chunk:
             u = str(uuid.uuid4())
@@ -256,11 +267,21 @@ def detect_products_batch(brand_slug, origin, items, chunk_size=DETECT_CHUNK,
             for u, det in data.items():
                 if u in keymap and isinstance(det, dict):
                     results[keymap[u]] = det
+            state["failures"] = 0
             return True
         except Exception as e:
-            if attempt < retries - 1:
+            # timeout: ta sama paczka znów by się nie zmieściła, od razu dzielimy
+            timed_out = isinstance(e, requests.Timeout)
+            if attempt < retries - 1 and not timed_out:
                 time.sleep(2 * (attempt + 1))
                 return post_chunk(chunk, attempt + 1)
+            state["failures"] += 1
+            if state["failures"] >= max_failures:
+                state["aborted"] = True
+                scraper_utils.logger.error(
+                    f"SFS API: {state['failures']} nieudanych zapytań z rzędu "
+                    f"({e}) — przerywam liczenie rat dla {brand_slug}.")
+                return False
             if len(chunk) > 1:
                 mid = len(chunk) // 2
                 post_chunk(chunk[:mid])
