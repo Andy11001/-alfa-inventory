@@ -12,51 +12,87 @@ realnie się różnią (mapy modeli, body style, paliwa).
 """
 import json
 import os
+import time
 
 import requests
+
+try:
+    from scrapers import scraper_utils
+except ModuleNotFoundError:
+    import scraper_utils
 
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
 
 
-def fetch_wp_products(api_url):
-    """Pełna lista produktów z WP API (paginacja po 100 aż do HTTP 400)."""
+def fetch_wp_products(api_url, retries=3):
+    """Pełna lista produktów z WP API (paginacja po 100 aż do HTTP 400).
+
+    Koniec wyników WP sygnalizuje HTTP 400 (strona poza zakresem) albo pusta
+    lista. Każdy inny błąd (timeout, 5xx, zły JSON) ponawiamy, a po
+    wyczerpaniu prób rzucamy wyjątek: ucięta lista to ucięty feed, który
+    zapisałby się jako pełny i wypchnął do Gista połowę aut.
+    """
     all_products = []
     page = 1
     session = requests.Session()
     session.headers.update({"User-Agent": UA})
     while True:
-        try:
-            r = session.get(f"{api_url}?per_page=100&page={page}", timeout=15)
-            if r.status_code == 400:
-                print(f"  Koniec wyników (HTTP 400 na stronie {page}).")
+        url = f"{api_url}?per_page=100&page={page}"
+        for attempt in range(retries):
+            try:
+                r = session.get(url, timeout=30)
+                if r.status_code == 400:
+                    print(f"  Koniec wyników (HTTP 400 na stronie {page}).")
+                    return all_products
+                r.raise_for_status()
+                data = r.json()
                 break
-            r.raise_for_status()
-            data = r.json()
-            if not data:
-                break
-            all_products.extend(data)
-            print(f"  Strona {page} ({len(data)} aut, łącznie: {len(all_products)})")
-            page += 1
-        except Exception as e:
-            print(f"  Koniec wyników / Błąd przy stronie {page}: {e}")
-            break
-    return all_products
+            except Exception as e:
+                if attempt == retries - 1:
+                    msg = (f"WP API {api_url}: strona {page} niedostępna po "
+                           f"{retries} próbach ({e}). Przerywam, żeby nie "
+                           f"zapisać niepełnego feedu.")
+                    scraper_utils.send_email_alert("WP API Error", msg)
+                    raise RuntimeError(msg) from e
+                wait = 3 * (2 ** attempt)
+                print(f"  Błąd przy stronie {page}: {e}. Ponawiam za {wait}s...")
+                time.sleep(wait)
+        if not data:
+            return all_products
+        all_products.extend(data)
+        print(f"  Strona {page} ({len(data)} aut, łącznie: {len(all_products)})")
+        page += 1
 
 
 def download_image(url, filepath):
-    """Pobiera zdjęcie, jeśli nie ma go jeszcze w cache (data/images)."""
+    """Pobiera zdjęcie, jeśli nie ma go jeszcze w cache (data/images).
+
+    Zapis przez plik .part i os.replace: przerwane pobieranie nie zostawia
+    uciętego pliku, który przy następnym runie uchodziłby za gotowy.
+    """
     if os.path.exists(filepath):
         return True
+    part = filepath + ".part"
     try:
-        r = requests.get(url, stream=True, timeout=10, headers={"User-Agent": UA})
-        if r.status_code == 200:
-            with open(filepath, "wb") as f:
-                for chunk in r.iter_content(1024):
-                    f.write(chunk)
-            return True
-    except Exception:
-        pass
-    return False
+        r = requests.get(url, stream=True, timeout=30, headers={"User-Agent": UA})
+        if r.status_code != 200:
+            return False
+        with open(part, "wb") as f:
+            for chunk in r.iter_content(65536):
+                f.write(chunk)
+        if os.path.getsize(part) == 0:
+            os.remove(part)
+            return False
+        os.replace(part, filepath)
+        return True
+    except Exception as e:
+        print(f"  Nie pobrano zdjęcia {url}: {e}")
+        if os.path.exists(part):
+            try:
+                os.remove(part)
+            except OSError:
+                pass
+        return False
 
 
 def format_address_json(street, city, city_to_region, default_region="Mazowieckie"):
